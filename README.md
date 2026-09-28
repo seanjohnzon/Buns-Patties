@@ -3,16 +3,17 @@
 Ordering and rewards for a halal smash burger truck in Houston
 ([@buns.patties](https://www.instagram.com/buns.patties)). **Soft launch 2 October.**
 
-A printed QR on the truck gets people into the app, where a free drink is waiting
-if they follow on Instagram or leave a review. After that they order ahead, pay,
-and pick up **by name** — nothing to show, nothing to scan. Staff get a kitchen
-board; the owner gets the takings, what is selling, and a tool for building his
-own giveaways.
+A printed QR on the truck gets people into the app, where the logo smashes a
+burger and a free drink is waiting if they follow on Instagram. After that they
+order ahead, pay, pick up **by name** — nothing to show, nothing to scan — and
+fill a stamp card: 5 orders of $15+ is free fries, 10 is a free burger. Staff get
+a kitchen board; the owner gets the takings, what is selling, sold-out switches,
+and a builder for his own campaigns.
 
 Runs on iOS, Android **and the web**. The web build is what makes the launch date
 possible: it takes payments with no app store involved.
 
-**Stack:** Expo (React Native, iOS + Android + web landing) · Supabase (auth, Postgres, realtime, edge functions) · Stripe (Apple Pay / Google Pay / cards). Running cost ≈ $0/mo + Stripe's 2.9% + 30¢.
+**Stack:** Expo (React Native, iOS + Android + web) · Supabase (auth, Postgres, realtime, edge functions) · card payments into the owner's own **Square** (2.9% + 30¢ online). The checkout code still has the Stripe version until the Square swap lands — see OPERATIONS.md.
 
 ## Run it now (demo mode, no backend needed)
 
@@ -26,7 +27,10 @@ On the Mac mini (where Xcode lives): rsync to `~/Library/Caches/Anchor/burgertru
 Deep-link any screen for a demo: `exp://10.0.0.152:8085/--/menu`, `/--/rewards`, `/--/staff/status`,
 or `/--/demo` which seeds a sample order and jumps to checkout.
 
-Press `i` for iOS simulator. Without `.env` it runs off `data/menu.seed.json` with a fake 730-point demo user and staff mode enabled, so every screen is browsable.
+Press `i` for iOS simulator. Without `.env` it runs off `data/menu.seed.json`, signed in
+as the owner, and the whole flow works with no backend: checkout places a pretend
+order, the kitchen board shows it, the stamp card counts it. **Account → Test controls**
+sets the stamp card (0/4/5/9/10) and resets the free drink, for the Expo Go checklist.
 
 ## Testing
 
@@ -34,9 +38,9 @@ Three steps, each with its own Supabase project:
 
 | | What it is | Data | What it is for |
 |---|---|---|---|
-| **Sandbox** | Expo Go, local | Dummy, wipe freely | The app isn't broken. Sign-in works here via Supabase **test OTP** — no Twilio, no texts, no cost. |
-| **SIT** | TestFlight, real device | Dummy, seeded, wipe freely | The real pieces join up: Twilio texting real codes, Stripe **test** mode. Every new feature and every first deploy passes through here. |
-| **UAT** | Real customers at the truck | **Real. Never wiped.** | Real feedback, to fix and improve. Stripe is **live** — this is a soft launch, not a test environment. |
+| **Sandbox** | Expo Go | Demo mode now; a sandbox project later | The app isn't broken. **Gate 1 is the 25-check list the owner ticks himself in Expo Go.** |
+| **SIT** | TestFlight, real device | Dummy, seeded, wipe freely | The real pieces join up: Twilio texting real codes, card payments in **test** mode. Every new feature and every first deploy passes through here. Gate 3, the three-phone acceptance route, runs here. |
+| **UAT** | Real customers at the truck | **Real. Never wiped.** | Real feedback, to fix and improve. Payments are **live** into the owner's Square — this is a soft launch, not a test environment. |
 
 Nothing moves forward without its gate passing. See the checklist:
 https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE
@@ -59,11 +63,15 @@ on the owner dashboard a lie.
 npm run verify
 ```
 
-That is Gate 0 — typecheck plus 70 tests over pricing, rewards rules, menu integrity,
-owner reporting, availability, feedback and phone normalisation (see [tests/README.md](tests/README.md)).
-Gate 1 is sandbox smoke, Gate 2 is SIT, and Gate 3 is a scripted three-phone
-end-to-end run on SIT. All hands-on gates live in the QA checklist:
-https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE
+That is Gate 0 — typecheck plus the whole suite: pricing, the menu against the
+printed board, the owner's option rules (in the app and on the server), stamps and
+campaigns, owner reporting, availability, feedback, phones, the demo guards (see
+[tests/README.md](tests/README.md)). Gate 1 is the owner's Expo Go checklist, Gate 2
+is SIT, Gate 3 is the three-phone acceptance route on SIT. All hands-on gates live in
+the QA checklist: https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE
+
+Every point the owner has asked for is traced to its test and its check in
+[docs/OWNER_NOTES.md](docs/OWNER_NOTES.md).
 
 Design work happens after every gate is green, not before.
 
@@ -90,8 +98,10 @@ rejected for exactly that.
 | `(tabs)/orders` | History + reorder entry point | |
 | `(tabs)/account` | Phone OTP sign-in, staff links | |
 | `staff/index` | Kitchen board — orders called out by name, plus a red banner for anything paid but not cooking | (Owner charges for this) |
-| `owner/index` | Takings today vs last week, orders, average order, tips kept separate, what's selling, rewards liability | Toast Now |
-| `owner/campaigns` | Build an offer, cap it, see what it cost | |
+| `owner/index` | Takings today vs last week, orders, average order, tips kept separate, given away, sold-out switches, what's selling, free items this week | Toast Now |
+| `owner/campaigns` | Build a campaign (do this, get that — or a stamp card), cap it, see what it cost, switch it off | |
+| `owner/page` | The truck page: story, contact, socials, delivery links, the reviews on Home | |
+| `reward` | Pick which item a reward pays for (which burger at 10 stamps) | |
 | `owner/people` | Who is staff / owner — a role on a normal phone login, no second admin password | Square, Toast |
 | `staff/soldout` | Mark an item sold out (staff and owner); it disappears for customers at once | |
 | `feedback` / `owner/feedback` | Customers tell the owner what was wrong; he works the list |  |
@@ -101,9 +111,15 @@ rejected for exactly that.
 
 ### Offers (campaigns) — the owner's tool
 
-Everything the truck gives away is a campaign, including the free drink printed on
-the sticker. The owner makes the rest from his phone (`owner/campaigns`): a title,
-what someone has to do, a link to send them to, what they get, and a cap.
+Everything the truck gives away is a campaign. Two ship with the app — the free
+drink for an Instagram follow, and the stamp card — and the owner builds the rest
+from his phone (`owner/campaigns`), in two shapes:
+
+- **Do this, get that** — pick what they do from ready-made actions (follow on
+  Instagram or TikTok, post and tag us, open a link), paste the link, pick what
+  they get (they choose one), set a cap and an end date.
+- **Stamp card** — the smallest order that earns a stamp, and what any number of
+  stamps buys (with "double patty included" for burgers).
 
 **Nothing here can be verified.** No platform will tell an app who followed, liked,
 shared or reviewed — Instagram and Google both refuse, and any product claiming
@@ -155,24 +171,14 @@ Owner → Campaigns.
 By name, like DoorDash. Typed at checkout, headline on the kitchen board, and the
 order screen says *"Ask for Cihan."*
 
-## Go-live checklist (what I need from you)
+## What we still need from the owner
 
-1. ~~**Menu**~~ — done, loaded from the printed board into `data/menu.seed.json` + `supabase/seed.sql`.
-   Open questions: which sodas the Can Drink covers, and whether Build Your Own includes cheese by default.
-2. **Photos** — one square photo per item (600×600 is fine). Until then `components/ItemImage.tsx` falls back to the logo.
-3. ~~**Branding**~~ — logo in `assets/brand/`, black + cheese-yellow palette in `lib/theme.ts`.
-4. **Reward tiers** — confirm the 5% rate and the ladder: free drink after $40 of
-   orders, seasoned fries after $100, wings after $160, The OG after $180.
-5. **Tax** — Houston is 8.25%; confirm whether menu prices include it → `TAX_RATE` in `lib/cart.ts` and the edge function (currently 0).
-6. **Your Google Maps review link** — the direct "write a review" URL, for
-   `EXPO_PUBLIC_GOOGLE_REVIEW_URL`. Without it that half of the welcome offer is dead.
-7. **Accounts to create** (all free tier):
-   - Supabase project → run `supabase/schema.sql` then `seed.sql`; turn on Phone auth (needs a Twilio account for SMS OTP, ~$0.01/msg); deploy both edge functions with `supabase functions deploy`; set secrets `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
-   - Stripe account → publishable + secret keys; add webhook pointing at the `stripe-webhook` function for `payment_intent.succeeded` / `payment_intent.payment_failed`; register Apple Pay merchant ID `merchant.com.burgertruck.app`.
-   - Apple Developer ($99/yr) + Google Play ($25 once) → EAS Build/Submit. Replace `bundleIdentifier` / `package` in `app.json` with the real ones.
-7. **Domain** for the QR landing page + universal links (e.g. `order.yourtruck.com`) → `associatedDomains` in `app.json`, then generate the QR from that URL.
-8. **Truck location/hours** — set in `truck_status` (staff can toggle open/closed; a staff toggle UI is a 20-line add).
-9. **Who is staff** — see *Signing in* below. Only the first owner needs SQL.
+The client-facing list is the **What We Need** page
+(https://claude.ai/artifact/HwCPDBosxVayFjk2PFx6vm): legal name, the domain, the
+D-U-N-S number, the Google listing fixed, Square (he presses Allow), Apple and
+Google Play the day the D-U-N-S arrives, photos, his story, the reviews to show,
+his other links. The menu, prices, tax (8.25% added at checkout) and branding are
+already in.
 
 ## Signing in
 
@@ -181,7 +187,7 @@ admin account. A `role` on the profile (`customer` / `staff` / `owner`) decides 
 you see.
 
 1. **Everyone** installs the app and signs in with their own number. They start as a
-   `customer` with the signup bonus.
+   `customer`. (No signup bonus — the free drink is earned by following.)
 2. **The first owner** is set once, by hand, because there is deliberately no way to
    promote yourself from inside the app:
    ```sql
@@ -197,7 +203,7 @@ Guard rails, all enforced in Postgres rather than only in the app:
 - Only an owner may change a role, and never their own (`id <> auth.uid()`).
 - `protect_last_owner` refuses to demote the only owner, so the truck can't end up
   with nobody in charge.
-- `owner_today` / `owner_product_mix` / `owner_rewards` each refuse a non-owner, so
+- `owner_today` / `owner_product_mix` / `owner_loyalty` / `owner_campaigns` each refuse a non-owner, so
   the money is safe even if someone calls the API directly.
 - `components/RequireRole.tsx` gates the screens as a second line of defence — it
   stops the wrong screen opening, it is not what keeps the data safe.

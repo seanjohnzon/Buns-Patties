@@ -3,11 +3,15 @@
 Three environments, each its own Supabase project and its own site. Nothing is
 shared between them — SIT's dummy orders must never touch UAT's real takings.
 
-| | Site | Supabase | Stripe |
+| | Site | Supabase | Card payments |
 |---|---|---|---|
-| Sandbox | local only | sandbox project | test keys |
-| SIT | a staging URL | SIT project | test keys |
-| UAT | the real address | UAT project | **live keys** |
+| Sandbox | local / Expo Go | none yet (demo mode) | none |
+| SIT | a staging URL | SIT project | test mode |
+| UAT | bunsandpattieshtx.com | UAT project | **live, the owner's Square** |
+
+> **Payments, Monday 28:** the code below still describes the Stripe version.
+> The swap to Square (hosted checkout, `payment.updated` webhook, the OAuth
+> Allow callback) replaces step 2's webhook list; everything else stays.
 
 ---
 
@@ -16,7 +20,7 @@ shared between them — SIT's dummy orders must never touch UAT's real takings.
 ```bash
 # In the SQL editor, in this order:
 #   supabase/schema.sql     tables, roles, rules, reporting
-#   supabase/seed.sql       the real menu
+#   supabase/seed.sql       the real menu (generated: node scripts/build-seed.mjs)
 #   supabase/cron.sql       the five-minute reconciliation sweep
 ```
 
@@ -83,7 +87,7 @@ Run the **Gate 4** checks: https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE
 
 The ones people skip and regret:
 
-- Swap to live Stripe keys, then put **one real card through yourself** and refund it.
+- Connect the owner's Square (he presses Allow), then put **one real $1 order through yourself** and refund it.
 - Confirm the reconciliation sweep is actually running:
   `select * from cron.job_run_details order by start_time desc limit 10;`
 - Confirm the UAT database has no seeded dummy data in it.
@@ -92,7 +96,8 @@ The ones people skip and regret:
 ## If something is wrong mid-service
 
 - **Stop taking orders:** Truck status → Closed. Immediate, no deploy.
-- **One item is wrong:** mark it sold out. Immediate.
+- **One item is wrong:** mark it sold out (kitchen board → Ran out of something?, or the owner dashboard). Immediate.
+- **A giveaway is being abused:** Owner → Campaigns → switch it off. Immediate.
 - **Paid but not cooking:** the kitchen board shows these in red; staff release by hand.
 - **Roll the site back:** redeploy the previous build. The database is unaffected.
 

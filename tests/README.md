@@ -14,11 +14,24 @@ All pure — no simulator, no network, no backend:
 - **campaigns.test.mjs** — the giveaways. One per account, caps, end dates, dead
   links, and the stamp card: $15 minimum, fries at 5, burger at 10.
 - **modifiers.test.mjs** — how options behave when tapped: burgers open built,
-  "No sauce" clears the rest, two wing flavors only at 8 or 10, fry sauce cups.
+  "No sauce" clears the rest, two wing sauces only at 8 or 10, fry sauce cups,
+  and the kitchen ticket ("NO CHEESE" pulled out, "Ketchup ×2").
+- **server-mods.test.mjs** — the same rules on the server
+  (`supabase/functions/_shared/validate-mods.ts`): what a hand-made order
+  cannot get past, and every item exactly as the app builds it is accepted.
 - **menu.test.mjs** — locks `data/menu.seed.json` to the printed board. Every
   burger at single, double and triple; wings at all four sizes; the three $1.50
-  toppings; plus structural checks (no orphan modifier groups, no duplicate ids,
-  burgers never sell back what they come with).
+  toppings; **size → cheese → toppings → sauce last on every item**; plus
+  structural checks (no orphan groups, no duplicate ids, one meaning per option
+  name, burgers never sell back what they come with).
+- **checkout.test.mjs** — closed truck, payments off, no name.
+- **reporting.test.mjs** — the owner's numbers.
+- **feedback.test.mjs**, **phone.test.mjs** — feedback rules, phone numbers
+  typed any way.
+- **demo-guard.test.mjs** — demo mode, pretend orders and the test controls can
+  never run against a real database.
+- **no-ratio-leak.test.mjs** — no customer screen says "points", and nothing
+  asks a customer to show a code.
 
 ## When these fail
 
@@ -28,4 +41,6 @@ unless the printed menu genuinely changed, in which case update `BOARD` in
 `menu.test.mjs` *and* the seed together.
 
 Hands-on checks that a machine cannot make live in the QA checklist:
-https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE
+https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE — Gate 1 is the 25-check
+Expo Go list. Which test and which check cover each of the owner's points:
+`docs/OWNER_NOTES.md`.
