@@ -26,6 +26,11 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
   const { data: profile } = await sb.from('profiles').select('*').eq('id', userId).single();
   if (!profile) return { error: 'no profile', status: 400 };
 
+  // A shut truck takes no money. Checked here, not just on the phone, so an app
+  // left open since lunchtime cannot put an order through at midnight.
+  const { data: truck } = await sb.from('truck_status').select('is_open').eq('id', 1).maybeSingle();
+  if (!truck?.is_open) return { error: 'The truck is closed right now.', status: 409 };
+
   const { data: items } = await sb.from('menu_items')
     .select('id, price, modifier_groups, available, sold_out_until')
     .in('id', lines.map((l: any) => l.menuItemId));

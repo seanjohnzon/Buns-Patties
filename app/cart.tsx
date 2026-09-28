@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
-import { createCheckoutSession, createOrder, getProfile, saveName } from '@/lib/api';
+import { createCheckoutSession, createOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
 import { cartTotals, lineTotal, useCart } from '@/lib/cart';
 import { pointsForOrder } from '@/lib/points';
 import { hasSupabase } from '@/lib/supabase';
@@ -18,15 +18,21 @@ export default function Cart() {
   const { lines, tip, redeemPoints, pickupAt, setQty, setTip, setRedeemPoints, setPickupAt, clear } = useCart();
   const [points, setPoints] = useState(0);
   const [pickupName, setPickupName] = useState('');
+  const [open, setOpen] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const stripe = useStripe();
 
-  useEffect(() => { getProfile().then((p) => { setPoints(p?.points ?? 0); if (p?.name) setPickupName(p.name); }); }, []);
+  useEffect(() => {
+    getProfile().then((p) => { setPoints(p?.points ?? 0); if (p?.name) setPickupName(p.name); }).catch(() => {});
+    // Re-checked every time the cart opens: the truck may have shut since.
+    getTruckStatus().then((s) => setOpen(s.isOpen)).catch(() => setOpen(null));
+  }, []);
 
   const t = cartTotals(lines, tip, redeemPoints);
 
   async function pay() {
+    if (open === false) { Alert.alert('Closed right now', 'The truck is shut. Your order is saved — come back when it opens.'); return; }
     if (!pickupName.trim()) { Alert.alert('Almost there', 'Add a name so we can call your order out.'); return; }
     if (!hasSupabase) { Alert.alert('Demo mode', 'Connect Supabase + Stripe to take real payments (see README).'); return; }
 
@@ -132,7 +138,12 @@ export default function Cart() {
         </View>
       </ScrollView>
       <View style={s.footer}>
-        <Button title={busy ? 'Processing…' : `Pay ${money(t.total)}`} disabled={busy} onPress={pay} />
+        {open === false && <Muted style={{ textAlign: 'center', marginBottom: 8 }}>The truck is closed right now.</Muted>}
+        <Button
+          title={open === false ? 'Closed right now' : busy ? 'Processing…' : `Pay ${money(t.total)}`}
+          disabled={busy || open === false}
+          onPress={pay}
+        />
       </View>
     </Screen>
   );
