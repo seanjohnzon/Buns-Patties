@@ -7,7 +7,6 @@ export default function OwnerLayout() {
     <RequireRole need="owner">
       <Stack screenOptions={{ headerTintColor: theme.colors.text, headerShadowVisible: false, contentStyle: { backgroundColor: theme.colors.bg } }}>
         <Stack.Screen name="index" options={{ title: 'Your truck' }} />
-        <Stack.Screen name="menu" options={{ title: "What's on" }} />
         <Stack.Screen name="people" options={{ title: 'Staff' }} />
         <Stack.Screen name="feedback" options={{ title: 'What people say' }} />
         <Stack.Screen name="campaigns" options={{ title: 'Campaigns' }} />

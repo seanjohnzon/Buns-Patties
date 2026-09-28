@@ -1,5 +1,6 @@
 // Run out of something mid-service? Turn it off here and it stops appearing
-// in the app immediately. Staff can do this too — it is not an owner decision.
+// in the app immediately. Staff and owner both — it is not an owner decision.
+// (The owner also has the same switches on his dashboard.)
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Alert, FlatList, Switch, View } from 'react-native';
@@ -8,7 +9,7 @@ import { getMenu, isSoldOut, setSoldOut } from '@/lib/api';
 import { theme } from '@/lib/theme';
 import type { MenuItem } from '@/lib/types';
 
-export default function OwnerMenu() {
+export default function SoldOut() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [off, setOff] = useState<Record<string, boolean>>({});
 
@@ -42,6 +43,7 @@ export default function OwnerMenu() {
                 <Muted>{soldOut ? 'Sold out' : money(item.price)}</Muted>
               </View>
               <Switch
+                accessibilityLabel={`${item.name} available`}
                 value={!soldOut}
                 onValueChange={(on) => toggle(item.id, !on)}
                 trackColor={{ true: theme.colors.accent }}

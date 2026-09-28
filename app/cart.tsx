@@ -2,12 +2,13 @@
 // Rewards arrive here as a line marked "on us" (the free drink, a stamp-card
 // reward); only real extras on them are charged.
 import { useStripe } from '@/lib/stripe';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
-import { createCheckoutSession, createOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
+import { DEMO_ALLOWED, createCheckoutSession, createOrder, demoPlaceOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
 import { cartTotals, lineTotal, useCart } from '@/lib/cart';
+import { round2 } from '@/lib/pricing';
 import { summarise } from '@/lib/modifiers';
 import { checkoutBlock } from '@/lib/availability';
 import { hasSupabase } from '@/lib/supabase';
@@ -24,11 +25,12 @@ export default function Cart() {
   const router = useRouter();
   const stripe = useStripe();
 
-  useEffect(() => {
-    getProfile().then((p) => { if (p?.name) setPickupName(p.name); }).catch(() => {});
-    // Re-checked every time the cart opens: the truck may have shut since.
+  // Re-checked every time the cart comes into view, not just the first time:
+  // the truck may have opened or shut since.
+  useFocusEffect(useCallback(() => {
+    getProfile().then((p) => { if (p?.name) setPickupName((n) => n || p.name!); }).catch(() => {});
     getTruckStatus().then((s) => { setOpen(s.isOpen); setPaymentsEnabled(s.paymentsEnabled ?? false); }).catch(() => setOpen(null));
-  }, []);
+  }, []));
 
   const t = cartTotals(lines, tip);
   const gate = checkoutBlock({ open, paymentsEnabled, total: t.total, name: pickupName });
@@ -36,7 +38,21 @@ export default function Cart() {
   async function pay() {
     const block = checkoutBlock({ open, paymentsEnabled, total: t.total, name: pickupName });
     if (block.blocked) { Alert.alert(block.reason === 'closed' ? 'Closed right now' : 'Almost there', block.message); return; }
-    if (!hasSupabase) { Alert.alert('Demo mode', 'Connect Supabase + Stripe to take real payments (see README).'); return; }
+    if (!hasSupabase) {
+      // Demo build: no card, no server — place it locally so the rest of the
+      // flow (order screen, kitchen board, stamps) can be walked in Expo Go.
+      if (!DEMO_ALLOWED) return;
+      try {
+        const id = await demoPlaceOrder({
+          lines: lines.map((l) => ({ name: l.item.name, qty: l.qty, price: round2(lineTotal(l) / l.qty), mods: l.chosen.map((o) => o.name), note: l.note, claim: l.claim })),
+          subtotal: t.subtotal, tax: t.tax, tip: t.tip, total: t.total, saved: t.saved,
+          pickupName: pickupName.trim(), pickupAt,
+        });
+        clear();
+        router.replace({ pathname: '/order/[id]', params: { id } });
+      } catch (e: any) { Alert.alert('Could not place that', e.message ?? String(e)); }
+      return;
+    }
 
     // No prices are sent: the server looks up every one and decides for itself
     // whether a claimed freebie is real.

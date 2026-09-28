@@ -93,7 +93,7 @@ rejected for exactly that.
 | `owner/index` | Takings today vs last week, orders, average order, tips kept separate, what's selling, rewards liability | Toast Now |
 | `owner/campaigns` | Build an offer, cap it, see what it cost | |
 | `owner/people` | Who is staff / owner — a role on a normal phone login, no second admin password | Square, Toast |
-| `owner/menu` | Mark an item sold out; it disappears for customers at once | |
+| `staff/soldout` | Mark an item sold out (staff and owner); it disappears for customers at once | |
 | `feedback` / `owner/feedback` | Customers tell the owner what was wrong; he works the list |  |
 | `qr` | Landing the truck QR points at | |
 

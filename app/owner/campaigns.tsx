@@ -45,7 +45,7 @@ export default function OwnerCampaigns() {
                   {c.endsAt ? ` · ends ${new Date(c.endsAt).toLocaleDateString()}` : ''}
                 </Muted>
               </View>
-              <Switch value={c.active} onValueChange={(v) => setCampaignActive(c.id, v).then(load)} trackColor={{ true: theme.colors.accent }} />
+              <Switch accessibilityLabel={`${c.title} running`} value={c.active} onValueChange={(v) => setCampaignActive(c.id, v).then(load)} trackColor={{ true: theme.colors.accent }} />
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
               <Body>Cost so far</Body>
@@ -229,7 +229,7 @@ function StampForm({ items, onDone }: { items: MenuItem[]; onDone: () => void })
           {items.some((m) => t.itemIds.includes(m.id) && m.modifierGroups.some((g) => g.id === 'patty')) && (
             <Row style={{ justifyContent: 'space-between' }}>
               <Muted style={{ flex: 1 }}>Double patty included free (a triple pays the difference)</Muted>
-              <Switch value={t.double} onValueChange={(v) => patch(i, { double: v })} trackColor={{ true: theme.colors.accent }} />
+              <Switch accessibilityLabel="Double patty included" value={t.double} onValueChange={(v) => patch(i, { double: v })} trackColor={{ true: theme.colors.accent }} />
             </Row>
           )}
           <Button title="Remove this reward" variant="ghost" onPress={() => setTiers((ts) => ts.filter((_, j) => j !== i))} />

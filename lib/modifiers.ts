@@ -90,6 +90,23 @@ export function groupHint(g: ModifierGroup, choice: Choice) {
   return 'Optional';
 }
 
+/**
+ * A kitchen ticket line from the option names on an order. Repeats are counted
+ * ("Ketchup ×2") and the "No …" choices are pulled out so the board can shout
+ * them — a burger that goes out with cheese after "No cheese" is a remake.
+ */
+export function ticket(mods: string[]) {
+  const no = mods.filter((m) => /^No /.test(m));
+  const rest = mods.filter((m) => !/^No /.test(m));
+  return { no: [...new Set(no)], rest: summariseNames(rest) };
+}
+
+function summariseNames(names: string[]) {
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  return [...counts].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(', ');
+}
+
 /** Kitchen-friendly summary: "Ketchup ×2, BBQ". */
 export function summarise(chosen: ModifierOption[]) {
   const counts = new Map<string, number>();

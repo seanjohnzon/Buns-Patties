@@ -8,6 +8,8 @@
 // Two payment paths must never drift apart on these rules, which is why they
 // both come through here.
 
+import { checkMods } from './validate-mods.ts';
+
 const TAX_RATE = 0.0825;   // Houston: 6.25% state + 2% local. Match lib/pricing.ts.
 
 export type BuiltOrder = {
@@ -59,15 +61,11 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
     const qty = Math.max(1, Math.min(20, Math.floor(Number(l.qty) || 1)));
     const groups = it.modifier_groups as any[];
     const mods: string[] = (Array.isArray(l.mods) ? l.mods : []).slice(0, 40).map(String);
-    // Each mod is looked up by name in this item's own groups. Unknown names cost
-    // nothing and mean nothing — they cannot lower a price.
-    const picked = mods.map((name) => {
-      for (const g of groups) {
-        const o = g.options.find((x: any) => x.name === name);
-        if (o) return { group: g.id, delta: Number(o.priceDelta) || 0 };
-      }
-      return { group: '', delta: 0 };
-    });
+    // The same option rules the app follows, checked again here: an order the
+    // kitchen cannot make never reaches the board.
+    const checked = checkMods(groups, mods);
+    if (!checked.ok) return { error: `${it.id}: ${checked.error}`, status: 400 };
+    const picked = checked.picked;
     const listUnit = Number(it.price) + picked.reduce((s, p) => s + p.delta, 0);
     let unit = listUnit;
     let campaignId: string | null = null;

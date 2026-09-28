@@ -91,7 +91,8 @@ export async function getMenu(): Promise<{ categories: Category[]; items: MenuIt
       };
     }
   }
-  return { categories: seed.categories, items: hydrate(seed.items) };
+  const today = soldOutToday();
+  return { categories: seed.categories, items: hydrate(seed.items).map((i) => (demoSoldOut.has(i.id) ? { ...i, soldOutUntil: today } : i)) };
 }
 
 export async function getItem(id: string): Promise<MenuItem | undefined> {
@@ -123,15 +124,16 @@ export async function getProfile(): Promise<Profile | null> {
   return data ? hydrateProfile(data) : null;
 }
 
-const DEMO_ORDERS: Order[] = [
+let DEMO_ORDERS: Order[] = [
   {
     id: 'demo-live', userId: 'demo', status: 'preparing',
     subtotal: 24.5, tax: 0, tip: 3, discount: 0, total: 27.5, stampsEarned: 1,
     pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 6 * 60000).toISOString(),
     lines: [
-      { name: 'The OG', qty: 1, price: 12.5, mods: ['Double patty', 'Beef bacon'] },
+      { name: 'The OG', qty: 1, price: 12.5, mods: ['Double patty', 'No cheese', 'Beef bacon', 'Ketchup', 'Mustard'], note: 'Well done please' },
       { name: 'Smash Fries', qty: 1, price: 8, mods: ['Single patty', 'American cheese', 'OG House'] },
-      { name: 'Can Drink', qty: 2, price: 2, mods: ['Coke'] },
+      { name: 'Can Drink', qty: 1, price: 2, mods: ['Coke'] },
+      { name: 'Can Drink (on us)', qty: 1, price: 0, mods: ['Sprite'], free: true },
     ],
   },
   {
@@ -189,12 +191,14 @@ export async function createOrder(input: OrderInput): Promise<{ orderId: string;
 
 
 export async function staffListOrders(): Promise<Order[]> {
-  if (!hasSupabase) return DEMO_ORDERS.filter((o) => o.status !== 'completed');
+  // Oldest first, the order the kitchen cooks in — same as the real query below.
+  if (!hasSupabase) return DEMO_ORDERS.filter((o) => o.status !== 'completed').sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const { data } = await supabase.from('orders').select('*, order_lines(*)').in('status', ['received', 'preparing', 'ready']).order('created_at');
   return (data ?? []).map(mapOrder);
 }
 
 export async function staffSetStatus(id: string, status: Order['status']) {
+  if (!hasSupabase) { DEMO_ORDERS = DEMO_ORDERS.map((o) => (o.id === id ? { ...o, status } : o)); return; }
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) throw error;
 }
@@ -203,7 +207,7 @@ function mapOrder(o: any): Order {
   return {
     id: o.id, userId: o.user_id, status: o.status, subtotal: +o.subtotal, tax: +o.tax, tip: +o.tip, discount: +o.discount,
     total: +o.total, stampsEarned: o.stamps_earned ?? 0, pickupAt: o.pickup_at, pickupName: o.pickup_name ?? null, createdAt: o.created_at,
-    lines: (o.order_lines ?? []).map((l: any) => ({ name: l.name, qty: l.qty, price: +l.unit_price, mods: l.mods ?? [] })),
+    lines: (o.order_lines ?? []).map((l: any) => ({ name: l.name, qty: l.qty, price: +l.unit_price, mods: l.mods ?? [], note: l.note ?? null, free: !!l.campaign_id })),
   };
 }
 
@@ -281,8 +285,11 @@ export async function findByPhone(phone: string): Promise<Profile | null> {
 
 // ---------- staff: sold out ----------
 
+// Demo builds remember sold-out switches on the phone, like the truck status.
+const demoSoldOut = new Set<string>();
+
 export async function setSoldOut(menuItemId: string, soldOut: boolean): Promise<void> {
-  if (!hasSupabase) return;
+  if (!hasSupabase) { if (soldOut) demoSoldOut.add(menuItemId); else demoSoldOut.delete(menuItemId); return; }
   const { error } = await supabase.from('menu_items')
     .update({ sold_out_until: soldOut ? soldOutToday() : null })
     .eq('id', menuItemId);
@@ -394,6 +401,52 @@ export const DEFAULT_CAMPAIGNS: Campaign[] = [
   },
 ];
 let demoCampaigns = DEFAULT_CAMPAIGNS;
+
+// ---------- demo builds: the whole flow, with no backend ----------
+// So the owner can walk every step in Expo Go before a database exists. These
+// mirror what the server does (supabase/functions/_shared/build-order.ts and the
+// on_order_paid trigger): stamps are spent for a stamp reward, a one-off offer is
+// marked used, and an order of the card's minimum or more earns a stamp.
+
+export type DemoLine = { name: string; qty: number; price: number; mods: string[]; note?: string; claim?: { campaign: string; tier?: number } };
+
+export async function demoPlaceOrder(input: { lines: DemoLine[]; subtotal: number; tax: number; tip: number; total: number; saved: number; pickupName: string; pickupAt: string | null }): Promise<string> {
+  if (!DEMO_ALLOWED || hasSupabase) throw new Error('demo only');
+  for (const l of input.lines) {
+    if (!l.claim) continue;
+    const c = demoCampaigns.find((x) => x.id === l.claim!.campaign);
+    if (c?.kind === 'stamps' && l.claim.tier) {
+      if ((demoStamps[c.id] ?? 0) < l.claim.tier) throw new Error('not enough stamps yet');
+      demoStamps = { ...demoStamps, [c.id]: (demoStamps[c.id] ?? 0) - l.claim.tier };
+    } else {
+      const claim = demoClaims.find((x) => x.campaignId === l.claim!.campaign && !x.usedAt);
+      if (!claim) throw new Error('that offer has not been unlocked');
+      demoClaims = demoClaims.map((x) => (x === claim ? { ...x, usedAt: new Date().toISOString() } : x));
+    }
+  }
+  let earned = 0;
+  for (const c of demoCampaigns) {
+    if (c.kind === 'stamps' && c.active && input.subtotal > 0 && input.subtotal >= (c.minOrder ?? 0)) {
+      demoStamps = { ...demoStamps, [c.id]: (demoStamps[c.id] ?? 0) + 1 };
+      earned += 1;
+    }
+  }
+  const id = 'demo-' + Date.now().toString(36);
+  DEMO_ORDERS = [{
+    id, userId: 'demo', status: 'received',
+    subtotal: input.subtotal, tax: input.tax, tip: input.tip, discount: input.saved, total: input.total, stampsEarned: earned,
+    pickupAt: input.pickupAt, pickupName: input.pickupName, createdAt: new Date().toISOString(),
+    lines: input.lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, mods: l.mods, note: l.note ?? null, free: !!l.claim })),
+  }, ...DEMO_ORDERS];
+  return id;
+}
+
+/** Demo builds only: put the test account in a known state. */
+export function demoSet(s: { stamps?: number; resetOffers?: boolean }) {
+  if (!DEMO_ALLOWED || hasSupabase) return;
+  if (s.stamps !== undefined) demoStamps = { ...demoStamps, stamp_card: s.stamps };
+  if (s.resetOffers) demoClaims = [];
+}
 
 export async function getCampaigns(): Promise<Campaign[]> {
   if (!hasSupabase) return demoCampaigns.filter((c) => c.active);

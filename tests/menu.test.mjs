@@ -187,3 +187,31 @@ test('a customer only sees what can actually be made', async () => {
   assert.equal(isOrderable({ available: true, soldOutUntil: '2026-10-02' }, day('2026-10-02')), false, 'ran out today');
   assert.equal(isOrderable({ available: true, soldOutUntil: '2026-10-02' }, day('2026-10-03')), true, 'back tomorrow');
 });
+
+// ---- one order on every item page ----
+// The owner's rule: size first, then cheese, then toppings, sauce always last.
+const ROLE = {
+  patty: 0, wing_count: 0,
+  cheese: 1,
+  toppings_add: 2, byo_build: 2, add_og: 2, add_wake: 2, add_lone: 2, add_bbq: 2,
+  sauce: 3, wing_flavor: 3, fry_sauces: 3,
+  drink_pick: 4,
+};
+
+test('every item asks in the same order: size, cheese, toppings, sauce last', () => {
+  for (const item of seed.items) {
+    const roles = item.modifierGroups.map((g) => {
+      assert.ok(g in ROLE, `${item.id}: group "${g}" has no place in the order — add it to ROLE`);
+      return ROLE[g];
+    });
+    assert.deepEqual(roles, [...roles].sort((a, b) => a - b), `${item.id} asks in the wrong order: ${item.modifierGroups.join(' → ')}`);
+  }
+});
+
+test('an option name means one thing on an item, so the kitchen ticket is unambiguous', () => {
+  for (const item of seed.items) {
+    const names = item.modifierGroups.flatMap((g) => groups[g].options.map((o) => o.name));
+    assert.equal(new Set(names).size, names.length, `${item.id} has the same option name in two groups`);
+  }
+});
+

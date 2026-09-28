@@ -125,7 +125,7 @@
     },
     "byo_build": {
       "id": "byo_build",
-      "name": "Build it",
+      "name": "Toppings",
       "required": false,
       "min": 0,
       "max": 15,
@@ -208,7 +208,7 @@
     },
     "wing_flavor": {
       "id": "wing_flavor",
-      "name": "Flavor",
+      "name": "Sauce",
       "required": true,
       "min": 1,
       "max": 1,
@@ -267,7 +267,7 @@
     },
     "drink_pick": {
       "id": "drink_pick",
-      "name": "Which one",
+      "name": "Your drink",
       "required": true,
       "min": 1,
       "max": 1,
@@ -567,9 +567,9 @@
       "imageUrl": null,
       "modifierGroups": [
         "patty",
-        "sauce",
         "cheese",
-        "add_og"
+        "add_og",
+        "sauce"
       ],
       "featured": true,
       "available": true,
@@ -599,9 +599,9 @@
       "imageUrl": null,
       "modifierGroups": [
         "patty",
-        "sauce",
         "cheese",
-        "add_wake"
+        "add_wake",
+        "sauce"
       ],
       "featured": true,
       "available": true,
@@ -633,9 +633,9 @@
       "imageUrl": null,
       "modifierGroups": [
         "patty",
-        "sauce",
         "cheese",
-        "add_lone"
+        "add_lone",
+        "sauce"
       ],
       "featured": true,
       "available": true,
@@ -665,9 +665,9 @@
       "imageUrl": null,
       "modifierGroups": [
         "patty",
-        "sauce",
         "cheese",
-        "add_bbq"
+        "add_bbq",
+        "sauce"
       ],
       "available": true,
       "includes": [
@@ -735,8 +735,8 @@
       "imageUrl": null,
       "modifierGroups": [
         "patty",
-        "toppings_add",
         "cheese",
+        "toppings_add",
         "sauce"
       ],
       "featured": true,

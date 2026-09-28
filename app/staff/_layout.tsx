@@ -8,6 +8,7 @@ export default function StaffLayout() {
       <Stack screenOptions={{ headerTintColor: theme.colors.text, headerShadowVisible: false, contentStyle: { backgroundColor: theme.colors.bg } }}>
         <Stack.Screen name="index" options={{ title: 'Kitchen' }} />
         <Stack.Screen name="status" options={{ title: 'Truck status' }} />
+        <Stack.Screen name="soldout" options={{ title: 'Sold out today' }} />
       </Stack>
     </RequireRole>
   );

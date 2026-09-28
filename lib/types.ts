@@ -68,7 +68,7 @@ export type Order = {
   pickupAt: string | null; // ISO, null = ASAP
   pickupName: string | null;
   createdAt: string;
-  lines: { name: string; qty: number; price: number; mods: string[] }[];
+  lines: { name: string; qty: number; price: number; mods: string[]; note?: string | null; free?: boolean }[];
 };
 
 export type Role = 'customer' | 'staff' | 'owner';

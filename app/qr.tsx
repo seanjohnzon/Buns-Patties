@@ -16,7 +16,7 @@ export default function QrLanding() {
     <View style={s.wrap}>
       <Text style={s.logo}>🍔</Text>
       <H1 style={{ color: '#fff', textAlign: 'center' }}>Your first drink{'\n'}is on us.</H1>
-      <Muted style={{ color: 'rgba(255,255,255,0.85)', textAlign: 'center' }}>Get the app, follow us or leave a review, and claim it with your next order. Order ahead and skip the queue.</Muted>
+      <Muted style={{ color: 'rgba(255,255,255,0.85)', textAlign: 'center' }}>Follow us on Instagram and your first drink is on us. Order ahead and skip the queue.</Muted>
       <Button title={isIOS ? 'Get it on the App Store' : 'Get it on Google Play'} style={{ backgroundColor: theme.colors.accent, marginTop: 12 }} onPress={() => url && Linking.openURL(url)} />
       <Button title="Open the app" variant="ghost" onPress={() => Linking.openURL('bunspatties://')} />
     </View>

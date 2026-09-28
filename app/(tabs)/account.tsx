@@ -4,6 +4,7 @@ import { Link, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { DemoControls } from '@/components/DemoControls';
 import { Body, Button, Card, H2, Muted, Screen } from '@/components/ui';
 import { getProfile, getTruckStatus, savePushToken } from '@/lib/api';
 import { registerForPush } from '@/lib/push';
@@ -72,9 +73,11 @@ export default function Account() {
             <H2>Staff</H2>
             <Link href="/staff/status" asChild><Button title="Open / close the truck" variant="secondary" /></Link>
             <Link href="/staff" asChild><Button title="Kitchen board" variant="secondary" /></Link>
-            <Link href="/owner/menu" asChild><Button title="Mark items sold out" variant="secondary" /></Link>
+            <Link href="/staff/soldout" asChild><Button title="Mark items sold out" variant="secondary" /></Link>
           </View>
         )}
+
+        <DemoControls />
 
         {profile && hasSupabase && (
           <Button title="Sign out" variant="ghost" onPress={async () => { await supabase.auth.signOut(); setProfile(null); }} />

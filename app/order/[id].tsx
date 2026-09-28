@@ -5,6 +5,7 @@ import { ScrollView, View } from 'react-native';
 import { OrderStatusStepper } from '@/components/OrderStatusStepper';
 import { Body, Button, Card, H1, Muted, Row, Screen, money } from '@/components/ui';
 import { getOrder, subscribeOrder } from '@/lib/api';
+import { summarise } from '@/lib/modifiers';
 import type { Order } from '@/lib/types';
 
 export default function OrderStatus() {
@@ -44,7 +45,8 @@ export default function OrderStatus() {
             <Row key={i} style={{ justifyContent: 'space-between' }}>
               <View style={{ flex: 1 }}>
                 <Body>{l.qty}× {l.name}</Body>
-                {l.mods.length > 0 && <Muted>{l.mods.join(', ')}</Muted>}
+                {l.mods.length > 0 && <Muted>{summarise(l.mods.map((name) => ({ id: name, name, priceDelta: 0 })))}</Muted>}
+                {!!l.note && <Muted>“{l.note}”</Muted>}
               </View>
               <Body>{money(l.price * l.qty)}</Body>
             </Row>

@@ -5,7 +5,7 @@
 //   3. The hook: the free drink for a follow.
 //   4. Whatever else the owner is running (the stamp card, new campaigns).
 //   5. What people say, then "tag us", then every way to find us.
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView as RNScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -34,7 +34,9 @@ export default function Home() {
   const logo = Math.min(width - 40, 320);
   const heroH = logo + 8;
 
-  useEffect(() => { getTruckStatus().then(setStatus).catch(() => {}); }, []);
+  // Every time Home comes back into view: the owner may have just opened the
+  // truck or edited the truck page.
+  useFocusEffect(useCallback(() => { getTruckStatus().then(setStatus).catch(() => {}); }, []));
 
   // Juice and fries fire together, every time the press lands.
   const [burst, setBurst] = useState(0);
@@ -65,6 +67,8 @@ export default function Home() {
     (hit, was) => { if (hit && !was) scheduleOnRN(fire); },
   );
 
+  // "TBD" is what the owner types before he knows the spot; never show it.
+  const placeName = status?.locationName && status.locationName !== 'TBD' ? status.locationName : status?.address || 'Houston, TX';
   const handle = status?.instagram ? '@' + (status.instagram.split('/').filter(Boolean).pop() ?? '') : null;
   const testimonials = status?.testimonials ?? [];
   const delivery = [
@@ -101,8 +105,8 @@ export default function Home() {
               <View style={[s.dot, { backgroundColor: status?.isOpen ? '#34C759' : '#8A8A8A' }]} />
               <Text style={s.whereKicker}>{status?.isOpen ? `OPEN NOW · PICKUP IN ${status.prepMinutes} MIN` : 'CLOSED RIGHT NOW'}</Text>
             </Row>
-            <Text style={s.whereName}>{status?.locationName && status.locationName !== 'TBD' ? status.locationName : 'Houston, TX'}</Text>
-            {!!status?.address && status.address !== status.locationName && <Muted style={s.whereSub}>{status.address}</Muted>}
+            <Text style={s.whereName}>{placeName}</Text>
+            {!!status?.address && status.address !== placeName && <Muted style={s.whereSub}>{status.address}</Muted>}
             {!!status?.hoursText && status.hoursText !== 'TBD' && <Muted style={s.whereSub}>{status.hoursText}</Muted>}
             <Row style={{ gap: 10, marginTop: 6 }}>
               <Link href="/(tabs)/menu" asChild>

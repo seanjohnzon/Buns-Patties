@@ -6,19 +6,23 @@ import { useCallback, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { MIN_AWAY_MS, useLeftTheApp } from '@/components/useLeftTheApp';
 import { Body, Button, Card, H1, Muted } from '@/components/ui';
-import { claimCampaign, getCampaigns, getMyCampaignClaims } from '@/lib/api';
+import { claimCampaign, getCampaigns, getMyCampaignClaims, getProfile } from '@/lib/api';
 import { actionIsUsable, canClaim, isUnspent, remainingClaims, type Campaign, type CampaignAction, type CampaignClaim } from '@/lib/campaigns';
 import { theme } from '@/lib/theme';
 
 export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [claims, setClaims] = useState<CampaignClaim[]>([]);
+  // One per account: an account is what makes "one per person" mean anything,
+  // so they sign in before they go off to follow, not after.
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const router = useRouter();
   const pending = useRef<{ campaignId: string; actionId: string } | null>(null);
 
   const load = useCallback(() => {
     getCampaigns().then(setCampaigns).catch(() => {});
     getMyCampaignClaims().then(setClaims).catch(() => {});
+    getProfile().then((p) => setSignedIn(!!p)).catch(() => setSignedIn(false));
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -82,7 +86,9 @@ export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
                 <Muted style={{ color: 'rgba(255,255,255,0.75)' }}>
                   {usable.length > 1 ? 'Do one of these and it’s yours:' : 'Do this and it’s yours:'}
                 </Muted>
-                {usable.map((a) => (
+                {signedIn === false ? (
+                  <Button title="Sign in to claim it" style={st.cta} onPress={() => router.push('/auth')} />
+                ) : usable.map((a) => (
                   <Button key={a.id} title={a.label} style={st.cta} onPress={() => doAction(c, a)} />
                 ))}
                 {usable.length === 0 && <Muted style={{ color: 'rgba(255,255,255,0.75)' }}>Coming soon.</Muted>}

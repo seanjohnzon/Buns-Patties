@@ -88,3 +88,11 @@ test('seasoned fries: any mix of sauce cups, counted up and down', () => {
   c = bump(cups, o(cups, 'fs_mayo'), -1, c);
   assert.equal(c.fry_sauces.length, 2, 'taking away one you do not have does nothing');
 });
+
+test('the kitchen ticket shouts the "No …" choices and counts repeats', async () => {
+  const { ticket } = await import('../lib/modifiers.ts');
+  const t = ticket(['Double patty', 'No cheese', 'Beef bacon', 'No sauce']);
+  assert.deepEqual(t.no, ['No cheese', 'No sauce']);
+  assert.equal(t.rest, 'Double patty, Beef bacon');
+  assert.equal(ticket(['Ketchup', 'Ketchup', 'BBQ']).rest, 'Ketchup ×2, BBQ');
+});

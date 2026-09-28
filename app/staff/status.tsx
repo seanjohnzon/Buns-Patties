@@ -24,7 +24,7 @@ export default function StaffStatus() {
               <H2>{s.isOpen ? 'Open' : 'Closed'}</H2>
               <Muted>{s.isOpen ? 'Customers can order now' : 'Ordering is turned off'}</Muted>
             </View>
-            <Switch value={s.isOpen} onValueChange={(v) => set({ isOpen: v })} trackColor={{ true: theme.colors.accent }} />
+            <Switch accessibilityLabel="Truck open" value={s.isOpen} onValueChange={(v) => set({ isOpen: v })} trackColor={{ true: theme.colors.accent }} />
           </Row>
         </Card>
 

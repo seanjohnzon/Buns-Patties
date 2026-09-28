@@ -1,5 +1,6 @@
 // Menu — category pills on top, item rows below (reference app screen 3).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { CartBar } from '@/components/CartBar';
 import { LoadFailed } from '@/components/LoadFailed';
@@ -18,10 +19,16 @@ export default function Menu() {
     setFailed(false);
     // Anything staff have run out of simply is not on the menu today.
     getMenu()
-      .then(({ categories, items }) => { setCats(categories); setItems(items.filter((i) => !isSoldOut(i))); })
+      .then(({ categories, items }) => {
+        const on = items.filter((i) => !isSoldOut(i));
+        // A category whose items are all sold out disappears too, not an empty tab.
+        setCats(categories.filter((c) => on.some((i) => i.categoryId === c.id)));
+        setItems(on);
+      })
       .catch(() => setFailed(true));
   }, []);
-  useEffect(load, [load]);
+  // Every time the tab is shown: something may have sold out since.
+  useFocusEffect(load);
 
   const shown = useMemo(() => (active === 'all' ? items : items.filter((i) => i.categoryId === active)), [items, active]);
 

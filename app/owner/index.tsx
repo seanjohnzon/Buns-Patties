@@ -76,7 +76,7 @@ export default function OwnerHome() {
             <Row key={i.id} style={st.soldRow}>
               <Body style={{ flex: 1, opacity: off[i.id] ? 0.45 : 1 }} numberOfLines={1}>{i.name}</Body>
               {off[i.id] && <Text style={st.soldTag}>SOLD OUT</Text>}
-              <Switch value={!off[i.id]} onValueChange={(on) => toggleSoldOut(i.id, !on)} trackColor={{ true: theme.colors.accent }} />
+              <Switch accessibilityLabel={`${i.name} available`} value={!off[i.id]} onValueChange={(on) => toggleSoldOut(i.id, !on)} trackColor={{ true: theme.colors.accent }} />
             </Row>
           ))}
         </Card>

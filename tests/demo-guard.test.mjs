@@ -18,3 +18,16 @@ test('the demo cart route refuses to run outside development', () => {
   const demo = readFileSync('app/demo.tsx', 'utf8');
   assert.match(demo, /if \(!DEMO_ALLOWED\) \{ router\.replace/);
 });
+
+test('pretend orders and the test controls cannot run against a real database', () => {
+  const api = readFileSync('lib/api.ts', 'utf8');
+  const place = api.slice(api.indexOf('export async function demoPlaceOrder'));
+  assert.match(place.slice(0, 400), /if \(!DEMO_ALLOWED \|\| hasSupabase\) throw/, 'demoPlaceOrder must refuse outside demo');
+  const set = api.slice(api.indexOf('export function demoSet'));
+  assert.match(set.slice(0, 200), /if \(!DEMO_ALLOWED \|\| hasSupabase\) return/, 'demoSet must refuse outside demo');
+  const controls = readFileSync('components/DemoControls.tsx', 'utf8');
+  assert.match(controls, /if \(!DEMO_ALLOWED \|\| hasSupabase\) return null/, 'test controls must not render outside demo');
+  const cart = readFileSync('app/cart.tsx', 'utf8');
+  const i = cart.indexOf('demoPlaceOrder(');
+  assert.ok(i > cart.indexOf('if (!hasSupabase) {') && cart.indexOf('if (!DEMO_ALLOWED) return;') < i, 'the cart only places a pretend order in a demo build');
+});
