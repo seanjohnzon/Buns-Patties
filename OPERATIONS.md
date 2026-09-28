@@ -15,20 +15,41 @@ it.
 | Database (Supabase) | **Us** | — | We operate it. One project per environment. |
 | Text messages (Twilio) | **Us** | — | Ours, pooled across clients. |
 | Web hosting / EAS | **Us** | — | Ours. |
-| **Stripe** | **Client** | They sign up at dashboard.stripe.com/register, then Settings → Team → Add member → our email, role **Developer**. We create our own restricted keys. Payouts go to their bank, never through us | It is their money and their tax liability |
-| **Apple Developer** | **Client** | They invite us into App Store Connect as **App Manager** with **Access to Certificates, Identifiers & Profiles** ticked — without it EAS cannot generate signing credentials | Apple forbids publishing a client's app under an agency licence — the account holder must be able to bind the business legally |
-| **Google Play** | **Client** | Play Console → Users and permissions → Invite new users → our email, **Admin (all permissions)** | Same, and an Organization account skips the 12-tester rule |
-| **Google Business Profile** | **Client** | Business Profile settings → People and access → Add → our email, **Manager** | It is their listing and their reviews |
+| **Stripe** | **Client** | They sign up at dashboard.stripe.com/register, then Settings → Team → Add member → cihanshah.sahin@gmail.com, role **Developer**. We build on a **restricted** key, then tell them to remove us. Payouts go to their bank, never through us | It is their money and their tax liability |
+| **Apple Developer** | **Client** | They invite us into App Store Connect as **App Manager** (invite cihanshah.sahin@gmail.com) with **Access to Certificates, Identifiers & Profiles** ticked — without it EAS cannot generate signing credentials | Apple forbids publishing a client's app under an agency licence — the account holder must be able to bind the business legally |
+| **Google Play** | **Client** | Play Console → Users and permissions → Invite new users → cihanshah.sahin@gmail.com, **Admin (all permissions)** | Same, and an Organization account skips the 12-tester rule |
+| **Google Business Profile** | **Client** | Business Profile settings → People and access → Add → cihanshah.sahin@gmail.com, **Manager** | It is their listing and their reviews |
 
 Nobody sends a password. Every client-owned account ends with *them adding us
 from inside*, and they can remove us at any time without anything breaking.
 
 ### Stripe: two models
 
-- **Now, one client:** their own Stripe account, we are invited as a team member
-  (role Developer — can create keys and webhooks, cannot touch payouts or the
-  team) and create our own restricted API keys. Invites expire after 10 days.
-  Simplest, and the money never touches us.
+- **Now, one client:** their own Stripe account; they invite us as a team member
+  with role **Developer** — the lowest Stripe role that can create API keys and
+  webhooks. Invites expire after 10 days.
+
+  Be accurate about what Developer can do (Stripe's own roles page): it **can**
+  create keys, view and refund payments, and pay the balance out — but only to
+  the bank account already on file. It **cannot** add or edit bank accounts, edit
+  the payout schedule, invite or remove anyone, or change the owner. So money can
+  only ever reach the client, but it is not a read-only role. (An earlier version
+  of this file said Developer "cannot touch payouts". That was wrong.)
+
+  So: build on a **restricted** key with only what the app needs, create the
+  webhook, then tell the client it is safe to **remove us**. Verify in SIT that
+  removing the member who created the key does not revoke it before telling any
+  client to do it.
+
+- **Never ask a client to email a key.** Stripe classes secret and restricted keys
+  as credentials, like a password. An emailed key lives in an inbox forever, has
+  no 2FA and no audit trail, and rotating it breaks the integration. The client
+  page tells them to refuse — including us — which also protects them from
+  phishing.
+
+Restricted key permissions the app needs: PaymentIntents (write), Checkout
+Sessions (write), Customers (write), Ephemeral keys (write — native only; confirm
+in SIT that a restricted key can mint them), Charges (read), Events (read).
 - **Later, many clients:** Stripe **Connect** — we hold the platform account and
   each business onboards as a connected account through Stripe's hosted flow.
   This is what Owner.com, Toast and Square all do. Worth moving to at the point
