@@ -8,7 +8,7 @@
 // Two payment paths must never drift apart on these rules, which is why they
 // both come through here.
 
-const TAX_RATE = 0.0;   // match lib/pricing.ts
+const TAX_RATE = 0.0825;   // Houston: 6.25% state + 2% local. Match lib/pricing.ts.
 
 export type BuiltOrder = {
   orderId: string;

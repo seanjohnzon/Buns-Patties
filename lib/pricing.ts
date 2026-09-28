@@ -4,8 +4,12 @@
 import { POINTS } from './points.ts';
 import type { CartLine } from './types';
 
-/** Houston sales tax. 0 until Cihan confirms whether menu prices already include it. */
-export const TAX_RATE = 0.0;
+/**
+ * Houston sales tax: 6.25% Texas state + 2% local. Prepared food is taxable.
+ * Menu prices are pre-tax, as they are in every US restaurant — tax is added
+ * to the total at checkout, not baked into the board price.
+ */
+export const TAX_RATE = 0.0825;
 
 /** One cart line: (base price + every chosen modifier delta) x quantity. */
 export const lineTotal = (l: CartLine) =>
