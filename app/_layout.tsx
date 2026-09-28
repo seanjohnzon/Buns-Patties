@@ -22,6 +22,7 @@ export default function RootLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="item/[id]" options={{ presentation: 'modal', title: '' }} />
       <Stack.Screen name="cart" options={{ presentation: 'modal', title: 'Your order' }} />
+      <Stack.Screen name="reward" options={{ presentation: "modal", title: "" }} />
       <Stack.Screen name="order/[id]" options={{ title: 'Order status' }} />
       {/* staff/ and owner/ carry their own layouts, which gate on role. */}
       <Stack.Screen name="staff" options={{ headerShown: false }} />

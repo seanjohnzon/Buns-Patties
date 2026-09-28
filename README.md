@@ -81,10 +81,10 @@ rejected for exactly that.
 
 | Route | What it is | Copied from |
 |---|---|---|
-| `(tabs)/index` | Home: open/closed + pickup time, points card w/ progress, "Your rewards" carousel, Featured | reference screenshot 1 |
+| `(tabs)/index` | Home: the logo smash (press, juice, fries), where/when, free drink, stamp card, reviews, tag us, links | reference screenshot 1 |
 | `(tabs)/menu` | Category pills + item rows with "+" | reference screenshot 3 |
 | `item/[id]` | Modifiers (required single / optional multi), qty, note | Toast/Owner item sheet |
-| `cart` | Pickup ASAP/scheduled, tip %, apply points, Pay (Stripe PaymentSheet) | reference screenshot 2 |
+| `cart` | Pickup ASAP/scheduled, tip %, rewards shown as "on us", Pay (Stripe PaymentSheet) | reference screenshot 2 |
 | `order/[id]` | Received → Cooking → Ready, live via realtime | BurgerFi order tracking |
 | `(tabs)/rewards` | Live offers, then progress to the next free thing in money | |
 | `(tabs)/orders` | History + reorder entry point | |
@@ -136,22 +136,19 @@ The owner's worry was a glitch handing out free food. Three things stop it:
    determined, and is not meant to — it stops a mis-tap or an unset link quietly
    giving something away.
 
-### Earning, by spending
+### The stamp card
 
-About **5% comes back as free food**: spend $100, get $5 worth. No codes, no scanning,
-and no way for staff to hand out rewards by hand.
+No points. Every order of **$15 or more (before tax)** is a stamp. At **5 stamps**
+take free seasoned fries, or keep going; at **10** take a free burger — any burger
+but Build Your Own. A double patty is on us; a triple pays the difference, and paid
+toppings are always paid. Taking a reward uses its stamps. The $15 rule lives in the
+small print on the card, where every coffee-shop card keeps it.
 
-| Free item | After this much ordering | Costs you |
-|---|---|---|
-| Can drink | $40 | $2 |
-| Seasoned fries | $100 | $5 |
-| Wings | $160 | $8 |
-| The OG | $180 | $9 |
-
-**The ratio is never shown to a customer.** Progress is expressed in money —
-*"$14 of orders to go"* — never points, a percentage or a rate. Once a rate is on a
-screen it is a promise; kept private it is a dial you can turn.
-`tests/no-ratio-leak.test.mjs` enforces this across every customer screen.
+Stamps are added by the database when an order is paid (`on_order_paid` in
+`supabase/schema.sql`) and handed back if the order dies. Spending them goes through
+`spend_stamps()`, which only the checkout function can call and which cannot spend
+the same stamps twice. The owner can build more cards, or change this one, in
+Owner → Campaigns.
 
 ### Picking the order up
 

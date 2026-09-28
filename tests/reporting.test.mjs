@@ -1,8 +1,7 @@
 // Owner dashboard maths. Wrong numbers here lose the owner's trust in the whole app.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { averageTicket, changeVsLastWeek, rewardsLiability, mixShare, summariseToday } from '../lib/reporting.ts';
-import { POINTS } from '../lib/points.ts';
+import { averageTicket, changeVsLastWeek, mixShare, summariseToday } from '../lib/reporting.ts';
 
 test('average ticket is money over orders', () => {
   assert.equal(averageTicket(245, 10), 24.5);
@@ -24,12 +23,6 @@ test('no comparison is offered when last week was nothing', () => {
   // "up 100%" from zero is noise, not information.
   assert.equal(changeVsLastWeek(500, 0), null);
   assert.equal(changeVsLastWeek(0, 0), null);
-});
-
-test('outstanding points are reported as the dollars they can buy', () => {
-  assert.equal(rewardsLiability(10000), 10000 / POINTS.redeemRate);
-  assert.equal(rewardsLiability(0), 0);
-  assert.equal(rewardsLiability(-50), 0, 'a negative balance must not read as credit');
 });
 
 test('product mix shares add up to one', () => {

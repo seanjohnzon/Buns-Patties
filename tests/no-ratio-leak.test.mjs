@@ -1,6 +1,6 @@
-// The conversion rate is ours to tune. The moment it appears on a customer
-// screen it becomes a promise, and changing it later looks like a downgrade.
-// This walks the actual customer-facing screens and fails if it leaks.
+// There are no points any more — rewards are a free drink and a stamp card. This
+// walks every customer-facing screen and fails if points language creeps back,
+// or if anything asks a customer to show a code.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -13,7 +13,9 @@ const CUSTOMER_SCREENS = [
   'app/cart.tsx',
   'app/qr.tsx',
   'app/order/[id].tsx',
-  'components/PointsCard.tsx',
+  'components/StampCard.tsx',
+  'components/WelcomeOffer.tsx',
+  'app/reward.tsx',
   'app/auth.tsx',
   'app/(tabs)/account.tsx',
   'app/feedback.tsx',
@@ -45,13 +47,13 @@ function visibleText(src) {
     .toLowerCase();
 }
 
-test('no customer screen mentions points, a rate, or a percentage', () => {
+test('no customer screen mentions points, a rate, or a percentage back', () => {
   const banned = [' pts', 'points', 'per $1', 'per dollar', '% back', 'redeem rate', 'just for joining'];
   for (const file of CUSTOMER_SCREENS) {
     const text = visibleText(readFileSync(file, 'utf8'));
     for (const word of banned) {
       assert.ok(!text.includes(word),
-        `${file} shows "${word}" to a customer — progress must be expressed in money`);
+        `${file} shows "${word}" to a customer — rewards are stamps and offers, not points`);
     }
   }
 });

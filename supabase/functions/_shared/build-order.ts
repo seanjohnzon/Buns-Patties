@@ -38,13 +38,13 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
   // Entitlements, read fresh from the database — never from the request.
   const { data: claims } = await sb.from('campaign_claims')
     .select('campaign_id, used_at').eq('user_id', userId).is('used_at', null);
-  const { data: campaigns } = await sb.from('campaigns').select('id, reward_item_id, active, ends_at');
-  const { data: rewards } = await sb.from('rewards').select('*');
+  const { data: campaigns } = await sb.from('campaigns').select('id, kind, reward_item_ids, reward_cover, tiers, active, ends_at');
+  const { data: stampRows } = await sb.from('campaign_stamps').select('campaign_id, stamps').eq('user_id', userId);
 
   let subtotal = 0;
-  let pointsToSpend = 0;
-  const usedCampaigns = new Set<string>();
-  const usedRewards = new Set<string>();
+  let saved = 0;
+  const usedCampaigns = new Set<string>();          // one-off offers spent by this order
+  const stampSpend: Record<string, number> = {};    // stamp cards spent by this order
   const priced: any[] = [];
   const today = new Date().toISOString().slice(0, 10);
 
@@ -57,33 +57,52 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
     }
 
     const qty = Math.max(1, Math.min(20, Math.floor(Number(l.qty) || 1)));
-    const opts = (it.modifier_groups as any[]).flatMap((g) => g.options);
-    const mods: string[] = Array.isArray(l.mods) ? l.mods : [];
-    const modDelta = mods.reduce((s, name) => s + (opts.find((o: any) => o.name === name)?.priceDelta ?? 0), 0);
-    let unit = Number(it.price) + modDelta;
+    const groups = it.modifier_groups as any[];
+    const mods: string[] = (Array.isArray(l.mods) ? l.mods : []).slice(0, 40).map(String);
+    // Each mod is looked up by name in this item's own groups. Unknown names cost
+    // nothing and mean nothing — they cannot lower a price.
+    const picked = mods.map((name) => {
+      for (const g of groups) {
+        const o = g.options.find((x: any) => x.name === name);
+        if (o) return { group: g.id, delta: Number(o.priceDelta) || 0 };
+      }
+      return { group: '', delta: 0 };
+    });
+    const listUnit = Number(it.price) + picked.reduce((s, p) => s + p.delta, 0);
+    let unit = listUnit;
+    let campaignId: string | null = null;
 
     if (l.campaign) {
-      const claimed = claims?.some((c: any) => c.campaign_id === l.campaign);
-      if (!claimed) return { error: 'that offer has not been unlocked', status: 403 };
-      if (usedCampaigns.has(l.campaign)) return { error: 'that offer is already in this order', status: 403 };
       const camp = campaigns?.find((c: any) => c.id === l.campaign);
       if (!camp || !camp.active) return { error: 'that offer is not running', status: 403 };
       if (camp.ends_at && new Date(camp.ends_at) <= new Date()) return { error: 'that offer has ended', status: 403 };
-      if (camp.reward_item_id !== l.menuItemId) return { error: 'that offer is not for this item', status: 403 };
       if (qty !== 1) return { error: 'one per offer', status: 403 };
-      usedCampaigns.add(l.campaign);
-      unit = 0;
+      if (usedCampaigns.has(camp.id) || stampSpend[camp.id]) return { error: 'that offer is already in this order', status: 403 };
+      let cover: Record<string, number> = {};
 
-    } else if (l.reward) {
-      const reward = rewards?.find((r: any) => r.id === l.reward);
-      if (!reward) return { error: 'unknown reward', status: 403 };
-      if (reward.menu_item_id !== l.menuItemId) return { error: 'reward does not match that item', status: 403 };
-      if (usedRewards.has(reward.id)) return { error: 'reward already used in this order', status: 403 };
-      if (qty !== 1) return { error: 'one of each reward per order', status: 403 };
-      pointsToSpend += reward.points_cost;
-      if (pointsToSpend > profile.points) return { error: 'not enough earned yet', status: 403 };
-      usedRewards.add(reward.id);
-      unit = 0;
+      if (camp.kind === 'stamps') {
+        const tier = (camp.tiers ?? []).find((t: any) => t.stamps === Number(l.tier));
+        if (!tier) return { error: 'that reward is not on the card', status: 403 };
+        if (!tier.itemIds.includes(l.menuItemId)) return { error: 'that reward is not for this item', status: 403 };
+        const have = stampRows?.find((s: any) => s.campaign_id === camp.id)?.stamps ?? 0;
+        if (have < tier.stamps) return { error: 'not enough stamps yet', status: 403 };
+        stampSpend[camp.id] = tier.stamps;
+        cover = tier.cover ?? {};
+      } else {
+        const claimed = claims?.some((c: any) => c.campaign_id === camp.id);
+        if (!claimed) return { error: 'that offer has not been unlocked', status: 403 };
+        if (!(camp.reward_item_ids ?? []).includes(l.menuItemId)) return { error: 'that offer is not for this item', status: 403 };
+        usedCampaigns.add(camp.id);
+        cover = camp.reward_cover ?? {};
+      }
+
+      // The item is on the house; each option group is free up to its cover.
+      // Same rule as rewardUnitPrice in lib/pricing.ts.
+      const byGroup: Record<string, number> = {};
+      for (const p of picked) byGroup[p.group] = (byGroup[p.group] ?? 0) + p.delta;
+      unit = round2(Object.entries(byGroup).reduce((s, [g, sum]) => s + Math.max(0, sum - (Number(cover[g]) || 0)), 0));
+      saved += listUnit - unit;
+      campaignId = camp.id;
     }
 
     subtotal += unit * qty;
@@ -92,6 +111,8 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
       name: String(l.name ?? it.id).slice(0, 80),
       qty, unit_price: unit, mods,
       note: l.note ? String(l.note).slice(0, 200) : null,
+      campaign_id: campaignId,
+      list_price: round2(listUnit),
     });
   }
 
@@ -100,7 +121,7 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
   const tip = Math.max(0, round2(Number(body.tip) || 0));
   const total = round2(subtotal + tax + tip);
   if (total < 0) return { error: 'bad total', status: 400 };
-  // Until Stripe approves the owner, only $0 orders (the free drink) go through.
+  // Until card payments are connected, only $0 orders (the free drink) go through.
   if (total > 0 && !truck?.payments_enabled) {
     return { error: 'Card payments are not switched on yet. Please pay at the window.', status: 409 };
   }
@@ -125,15 +146,26 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
 
   const { data: order, error } = await sb.from('orders').insert({
     user_id: userId, subtotal, tax, tip,
-    discount: 0,                    // rewards are already priced at zero above
+    discount: round2(saved),        // what the rewards were worth; already out of subtotal
     total,
-    redeem_points: pointsToSpend,
+    stamp_spend: stampSpend,
     pickup_at: body.pickupAt ?? null,
     pickup_name: pickupName,
   }).select().single();
   if (error) return { error: error.message, status: 500 };
 
   await sb.from('order_lines').insert(priced.map((l) => ({ ...l, order_id: order.id })));
+
+  // Take the stamps now, conditionally, so two checkouts cannot spend the same
+  // ones. If the order dies, the database trigger gives them back.
+  const spent: Record<string, number> = {};
+  for (const [campaignId, n] of Object.entries(stampSpend)) {
+    const { data: ok } = await sb.rpc('spend_stamps', { p_user: userId, p_campaign: campaignId, p_n: n });
+    if (ok) { spent[campaignId] = n; continue; }
+    // Cancelling hands back whatever this order had already taken.
+    await sb.from('orders').update({ status: 'cancelled', stamp_spend: spent }).eq('id', order.id);
+    return { error: 'not enough stamps yet', status: 403 };
+  }
 
   // Spend the claims, conditional on still being unspent, so a retried request
   // cannot hand the same offer out twice.

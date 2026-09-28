@@ -6,7 +6,7 @@
 //
 // Refuses to run against anything that looks like the live project. It creates
 // real auth users (with fake numbers in the +1 555 01xx reserved-for-fiction
-// range), which fires the signup trigger, so points and profiles come out right.
+// range), which fires the signup trigger, so profiles come out right.
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 
@@ -81,17 +81,17 @@ async function main() {
     for (let n = 0; n < count; n++) {
       const lines = Array.from({ length: between(1, 3) }, buildLine);
       const subtotal = +lines.reduce((s, l) => s + l.unit_price * l.qty, 0).toFixed(2);
-      const discount = Math.random() < 0.12 ? between(1, 5) : 0;
+      // Now and then a free drink went out with it: worth $2, not taken off the total.
+      const discount = Math.random() < 0.12 ? 2 : 0;
       const tip = Math.random() < 0.5 ? +(subtotal * pick([0.1, 0.15, 0.2])).toFixed(2) : 0;
-      const total = +(subtotal - discount + tip).toFixed(2);
+      const total = +(subtotal + tip).toFixed(2);
       const at = orderTimeOn(day).toISOString();
 
       const { data: order, error } = await db.from('orders').insert({
         user_id: pick(userIds),
         status: d === 0 && n >= count - 2 ? 'preparing' : 'completed',  // a couple live on the board
         subtotal, tax: 0, tip, discount, total,
-        redeem_points: discount * 100,
-        points_earned: Math.floor(subtotal * 10),
+        stamps_earned: subtotal >= 15 ? 1 : 0,
         created_at: at, updated_at: at,
       }).select().single();
       if (error) { console.error('order:', error.message); continue; }

@@ -6,13 +6,12 @@ import { supabase, hasSupabase } from './supabase';
 
 /** Demo data is for development only. See getProfile. */
 export const DEMO_ALLOWED = __DEV__ || process.env.EXPO_PUBLIC_ENV === 'sandbox';
-import type { Category, MenuItem, ModifierGroup, Order, Profile, Reward, Role, TruckStatus } from './types';
+import type { Category, MenuItem, ModifierGroup, Order, Profile, Role, Testimonial, TruckStatus } from './types';
 export { isOrderable, isSoldOut } from './availability';
 import { soldOutToday } from './availability';
 import { phoneDigits } from './phone';
-import { pointsForOrder } from './points';
-import type { Campaign, CampaignAction, CampaignClaim } from './campaigns';
-import type { MixRow, RewardsRaw, TodayRaw } from './reporting';
+import type { Campaign, CampaignAction, CampaignClaim, StampTier } from './campaigns';
+import type { LoyaltyRaw, MixRow, TodayRaw } from './reporting';
 
 const groups = seed.modifierGroups as Record<string, ModifierGroup>;
 
@@ -21,16 +20,33 @@ function hydrate(items: typeof seed.items): MenuItem[] {
     ...i,
     featured: !!i.featured,
     modifierGroups: (i.modifierGroups as string[]).map((g) => groups[g]).filter(Boolean),
+    includes: 'includes' in i ? (i.includes as string[]) : [],
+    defaults: ('defaults' in i ? i.defaults : {}) as Record<string, string[]>,
   }));
 }
 
 export async function getTruckStatus(): Promise<TruckStatus> {
   if (hasSupabase) {
     const { data } = await supabase.from('truck_status').select('*').eq('id', 1).single();
-    if (data) return { isOpen: data.is_open, paymentsEnabled: data.payments_enabled, halal: data.halal, instagram: data.instagram, locationName: data.location_name, address: data.address, lat: data.lat, lng: data.lng, hoursText: data.hours_text, prepMinutes: data.prep_minutes };
+    if (data) return {
+      isOpen: data.is_open, paymentsEnabled: data.payments_enabled, halal: data.halal, instagram: data.instagram,
+      locationName: data.location_name, address: data.address, lat: data.lat, lng: data.lng,
+      hoursText: data.hours_text, prepMinutes: data.prep_minutes,
+      story: data.story ?? '', phone: data.contact_phone ?? '', email: data.contact_email ?? '',
+      tiktok: data.tiktok ?? '', facebook: data.facebook ?? '',
+      doordash: data.doordash_url ?? '', ubereats: data.ubereats_url ?? '', grubhub: data.grubhub_url ?? '',
+      testimonials: Array.isArray(data.testimonials) ? data.testimonials : [],
+    };
   }
-  return demoStatus ?? (seed.truck as TruckStatus);
+  return demoStatus ?? { ...(seed.truck as TruckStatus), testimonials: DEMO_TESTIMONIALS };
 }
+
+// Shown only in demo builds, and labelled SAMPLE on screen, so nobody mistakes
+// them for real reviews. The real ones are the owner's picks from his Google page.
+const DEMO_TESTIMONIALS: Testimonial[] = [
+  { name: 'Sample', quote: 'The owner’s favourite Google reviews go here. Pick them in Owner → The truck page.', stars: 5, sample: true },
+  { name: 'Sample', quote: 'Three to five short ones read best.', stars: 5, sample: true },
+];
 
 // Demo mode keeps staff edits in memory so the flow can be shown without a backend.
 let demoStatus: TruckStatus | null = null;
@@ -40,6 +56,18 @@ export async function setTruckStatus(s: TruckStatus): Promise<void> {
   const { error } = await supabase.from('truck_status').update({
     is_open: s.isOpen, location_name: s.locationName, address: s.address,
     hours_text: s.hoursText, prep_minutes: s.prepMinutes,
+  }).eq('id', 1);
+  if (error) throw error;
+}
+
+/** The owner's "truck page": story, contact, socials, delivery links, reviews. */
+export async function setTruckPage(s: TruckStatus): Promise<void> {
+  if (!hasSupabase) { demoStatus = s; return; }
+  const { error } = await supabase.from('truck_status').update({
+    story: s.story || null, contact_phone: s.phone || null, contact_email: s.email || null,
+    instagram: s.instagram || null, tiktok: s.tiktok || null, facebook: s.facebook || null,
+    doordash_url: s.doordash || null, ubereats_url: s.ubereats || null, grubhub_url: s.grubhub || null,
+    testimonials: (s.testimonials ?? []).filter((x) => !x.sample),
   }).eq('id', 1);
   if (error) throw error;
 }
@@ -58,6 +86,7 @@ export async function getMenu(): Promise<{ categories: Category[]; items: MenuIt
           price: Number(i.price), imageUrl: i.image_url, featured: i.featured, available: i.available,
           soldOutUntil: i.sold_out_until ?? null,
           modifierGroups: i.modifier_groups ?? [],
+          includes: i.includes ?? [], defaults: i.defaults ?? {},
         })),
       };
     }
@@ -70,18 +99,10 @@ export async function getItem(id: string): Promise<MenuItem | undefined> {
   return items.find((i) => i.id === id);
 }
 
-export async function getRewards(): Promise<Reward[]> {
-  if (hasSupabase) {
-    const { data } = await supabase.from('rewards').select('*').order('points_cost');
-    if (data) return data.map((r: any) => ({ id: r.id, name: r.name, pointsCost: r.points_cost, imageUrl: r.image_url, menuItemId: r.menu_item_id }));
-  }
-  return seed.rewards;
-}
-
 function hydrateProfile(d: any): Profile {
   const role: Role = d.role ?? 'customer';
   return {
-    id: d.id, name: d.name, phone: d.phone, points: d.points, birthday: d.birthday,
+    id: d.id, name: d.name, phone: d.phone, birthday: d.birthday,
     role,
     isStaff: role === 'staff' || role === 'owner',
     isOwner: role === 'owner',
@@ -94,7 +115,7 @@ export async function getProfile(): Promise<Profile | null> {
     // in a development build. A deployed build with no database configured must
     // show a signed-out app, never hand every visitor the owner's screens.
     if (!DEMO_ALLOWED) return null;
-    return hydrateProfile({ id: 'demo', name: 'Cihan', phone: null, points: 730, role: (process.env.EXPO_PUBLIC_DEMO_ROLE ?? 'owner'), birthday: null });
+    return hydrateProfile({ id: 'demo', name: 'Cihan', phone: null, role: (process.env.EXPO_PUBLIC_DEMO_ROLE ?? 'owner'), birthday: null });
   }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -105,17 +126,17 @@ export async function getProfile(): Promise<Profile | null> {
 const DEMO_ORDERS: Order[] = [
   {
     id: 'demo-live', userId: 'demo', status: 'preparing',
-    subtotal: 24.5, tax: 0, tip: 3, discount: 0, total: 27.5, pointsEarned: 122,
+    subtotal: 24.5, tax: 0, tip: 3, discount: 0, total: 27.5, stampsEarned: 1,
     pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 6 * 60000).toISOString(),
     lines: [
       { name: 'The OG', qty: 1, price: 12.5, mods: ['Double patty', 'Beef bacon'] },
-      { name: 'Smash Fries', qty: 1, price: 8, mods: ['Single patty', 'OG House'] },
+      { name: 'Smash Fries', qty: 1, price: 8, mods: ['Single patty', 'American cheese', 'OG House'] },
       { name: 'Can Drink', qty: 2, price: 2, mods: ['Coke'] },
     ],
   },
   {
     id: 'demo-done', userId: 'demo', status: 'completed',
-    subtotal: 24, tax: 0, tip: 0, discount: 0, total: 24, pointsEarned: 120,
+    subtotal: 24, tax: 0, tip: 0, discount: 0, total: 24, stampsEarned: 1,
     pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 8 * 864e5).toISOString(),
     lines: [{ name: 'BBQ Bacon', qty: 2, price: 12, mods: ['Double patty'] }],
   },
@@ -153,7 +174,7 @@ export async function createCheckoutSession(input: OrderInput): Promise<{ orderI
 
 // Creates the order row + asks the edge function for a Stripe PaymentIntent.
 export type OrderInput = {
-  lines: { menuItemId: string; name: string; qty: number; mods: string[]; note?: string; campaign?: string; reward?: string }[];
+  lines: { menuItemId: string; name: string; qty: number; mods: string[]; note?: string; campaign?: string; tier?: number }[];
   tip: number;
   pickupAt: string | null;
   pickupName?: string;
@@ -181,7 +202,7 @@ export async function staffSetStatus(id: string, status: Order['status']) {
 function mapOrder(o: any): Order {
   return {
     id: o.id, userId: o.user_id, status: o.status, subtotal: +o.subtotal, tax: +o.tax, tip: +o.tip, discount: +o.discount,
-    total: +o.total, pointsEarned: o.points_earned, pickupAt: o.pickup_at, pickupName: o.pickup_name ?? null, createdAt: o.created_at,
+    total: +o.total, stampsEarned: o.stamps_earned ?? 0, pickupAt: o.pickup_at, pickupName: o.pickup_name ?? null, createdAt: o.created_at,
     lines: (o.order_lines ?? []).map((l: any) => ({ name: l.name, qty: l.qty, price: +l.unit_price, mods: l.mods ?? [] })),
   };
 }
@@ -218,13 +239,13 @@ export async function getProductMix(days = 7): Promise<MixRow[]> {
   return (data ?? []).map((r: any) => ({ menuItemId: r.menu_item_id, name: r.name, qty: Number(r.qty), revenue: Number(r.revenue) }));
 }
 
-export async function getOwnerRewards(): Promise<RewardsRaw> {
+export async function getOwnerLoyalty(): Promise<LoyaltyRaw> {
   if (!hasSupabase) {
-    return { pointsOutstanding: 48600, members: 214, newThisWeek: 23, redeemedThisWeek: 3100 };
+    return { members: 214, newThisWeek: 23, givenThisWeek: 31, givenValueThisWeek: 96 };
   }
-  const { data, error } = await supabase.rpc('owner_rewards');
+  const { data, error } = await supabase.rpc('owner_loyalty');
   if (error) throw error;
-  return data as RewardsRaw;
+  return data as LoyaltyRaw;
 }
 
 // ---------- owner: people ----------
@@ -232,8 +253,8 @@ export async function getOwnerRewards(): Promise<RewardsRaw> {
 export async function listTeam(): Promise<Profile[]> {
   if (!hasSupabase) {
     return [
-      hydrateProfile({ id: 'demo', name: 'Cihan', phone: '+1 713 555 4402', points: 730, role: 'owner' }),
-      hydrateProfile({ id: 'u2', name: 'Samil', phone: '+1 713 555 8890', points: 120, role: 'staff' }),
+      hydrateProfile({ id: 'demo', name: 'Cihan', phone: '+1 713 555 4402', role: 'owner' }),
+      hydrateProfile({ id: 'u2', name: 'Samil', phone: '+1 713 555 8890', role: 'staff' }),
     ];
   }
   const { data, error } = await supabase.from('profiles').select('*').in('role', ['staff', 'owner']).order('role');
@@ -351,21 +372,32 @@ export async function saveName(name: string) {
 // ---------- campaigns ----------
 
 let demoClaims: CampaignClaim[] = [];
+let demoStamps: Record<string, number> = { stamp_card: 6 };
 
-const DEMO_CAMPAIGNS: Campaign[] = [
+/** The two campaigns the app ships with. Mirrors the inserts in supabase/schema.sql. */
+export const DEFAULT_CAMPAIGNS: Campaign[] = [
   {
-    id: 'welcome_drink', title: 'Free drink', blurb: 'On us, for your first order',
-    actions: [
-      { id: 'follow_instagram', label: 'Follow us on Instagram', url: 'https://www.instagram.com/buns.patties' },
-      { id: 'google_review', label: 'Leave a Google review', url: process.env.EXPO_PUBLIC_GOOGLE_REVIEW_URL ?? 'https://maps.google.com/?cid=559877457463287649' },
+    id: 'welcome_drink', kind: 'action', title: 'Free drink', blurb: 'Follow us and your first drink is on us', finePrint: null,
+    actions: [{ id: 'follow_instagram', label: 'Follow us on Instagram', url: 'https://www.instagram.com/buns.patties' }],
+    rewardItemIds: ['can_drink'], cover: {}, minOrder: null, tiers: [],
+    maxClaims: 1000, claimsCount: 138, endsAt: null, active: true,
+  },
+  {
+    id: 'stamp_card', kind: 'stamps', title: 'Stamp card', blurb: 'Every order is a stamp',
+    finePrint: 'Orders of $15 or more before tax earn a stamp. One stamp per order. Taking a reward uses its stamps.',
+    actions: [], rewardItemIds: [], cover: {}, minOrder: 15,
+    tiers: [
+      { stamps: 5, label: 'Free fries', itemIds: ['seasoned_fries'], cover: {} },
+      { stamps: 10, label: 'Free burger', itemIds: ['og', 'wake_n_smash', 'lone_star_heat', 'bbq_bacon'], cover: { patty: 2 } },
     ],
-    rewardItemId: 'can_drink', maxClaims: 1000, claimsCount: 138, endsAt: null, active: true,
+    maxClaims: null, claimsCount: 0, endsAt: null, active: true,
   },
 ];
+let demoCampaigns = DEFAULT_CAMPAIGNS;
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  if (!hasSupabase) return DEMO_CAMPAIGNS;
-  const { data, error } = await supabase.from('campaigns').select('*').eq('active', true);
+  if (!hasSupabase) return demoCampaigns.filter((c) => c.active);
+  const { data, error } = await supabase.from('campaigns').select('*').eq('active', true).order('created_at');
   if (error) throw error;
   return (data ?? []).map(hydrateCampaign);
 }
@@ -376,6 +408,15 @@ export async function getMyCampaignClaims(): Promise<CampaignClaim[]> {
   if (!user) return [];
   const { data } = await supabase.from('campaign_claims').select('*').eq('user_id', user.id);
   return (data ?? []).map((c: any) => ({ campaignId: c.campaign_id, unlockedBy: c.unlocked_by, usedAt: c.used_at }));
+}
+
+/** Stamps on each card, by campaign id. */
+export async function getMyStamps(): Promise<Record<string, number>> {
+  if (!hasSupabase) return demoStamps;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return {};
+  const { data } = await supabase.from('campaign_stamps').select('campaign_id, stamps').eq('user_id', user.id);
+  return Object.fromEntries((data ?? []).map((r: any) => [r.campaign_id, r.stamps]));
 }
 
 /**
@@ -397,45 +438,62 @@ export async function claimCampaign(campaignId: string, actionId: string) {
 // ---------- owner: campaigns ----------
 
 export type CampaignStats = {
-  id: string; title: string; active: boolean; endsAt: string | null;
+  id: string; kind: Campaign['kind']; title: string; active: boolean; endsAt: string | null;
   maxClaims: number | null; claimsCount: number; usedCount: number; cost: number;
 };
 
 export async function getOwnerCampaigns(): Promise<CampaignStats[]> {
   if (!hasSupabase) {
-    return [{ id: 'welcome_drink', title: 'Free drink', active: true, endsAt: null, maxClaims: 1000, claimsCount: 138, usedCount: 96, cost: 192 }];
+    return demoCampaigns.map((c) => ({
+      id: c.id, kind: c.kind, title: c.title, active: c.active, endsAt: c.endsAt,
+      maxClaims: c.maxClaims, claimsCount: c.claimsCount,
+      usedCount: c.kind === 'stamps' ? 12 : 96, cost: c.kind === 'stamps' ? 74 : 192,
+    }));
   }
   const { data, error } = await supabase.rpc('owner_campaigns');
   if (error) throw error;
   return (data ?? []).map((r: any) => ({
-    id: r.id, title: r.title, active: r.active, endsAt: r.ends_at,
+    id: r.id, kind: r.kind, title: r.title, active: r.active, endsAt: r.ends_at,
     maxClaims: r.max_claims, claimsCount: r.claims_count, usedCount: Number(r.used_count), cost: Number(r.cost),
   }));
 }
 
-export async function saveCampaign(c: {
-  id: string; title: string; blurb: string; actions: CampaignAction[];
-  rewardItemId: string; maxClaims: number; endsAt: string | null; active: boolean;
-}) {
-  if (!hasSupabase) return;
+export type CampaignDraft = {
+  id: string; kind: Campaign['kind']; title: string; blurb: string; finePrint: string;
+  actions: CampaignAction[]; rewardItemIds: string[]; cover: Record<string, number>;
+  minOrder: number | null; tiers: StampTier[];
+  maxClaims: number | null; endsAt: string | null; active: boolean;
+};
+
+export async function saveCampaign(c: CampaignDraft) {
+  if (!hasSupabase) {
+    const next: Campaign = { ...c, blurb: c.blurb || null, finePrint: c.finePrint || null, claimsCount: 0 };
+    demoCampaigns = [...demoCampaigns.filter((x) => x.id !== c.id), next];
+    return;
+  }
   const { error } = await supabase.from('campaigns').upsert({
-    id: c.id, title: c.title, blurb: c.blurb, actions: c.actions,
-    reward_item_id: c.rewardItemId, max_claims: c.maxClaims, ends_at: c.endsAt, active: c.active,
+    id: c.id, kind: c.kind, title: c.title, blurb: c.blurb || null, fine_print: c.finePrint || null,
+    actions: c.actions, reward_item_ids: c.rewardItemIds, reward_cover: c.cover,
+    min_order: c.minOrder, tiers: c.tiers,
+    max_claims: c.maxClaims, ends_at: c.endsAt, active: c.active,
   });
   if (error) throw error;
 }
 
 export async function setCampaignActive(id: string, active: boolean) {
-  if (!hasSupabase) return;
+  if (!hasSupabase) { demoCampaigns = demoCampaigns.map((c) => (c.id === id ? { ...c, active } : c)); return; }
   const { error } = await supabase.from('campaigns').update({ active }).eq('id', id);
   if (error) throw error;
 }
 
 function hydrateCampaign(d: any): Campaign {
   return {
-    id: d.id, title: d.title, blurb: d.blurb,
+    id: d.id, kind: d.kind ?? 'action', title: d.title, blurb: d.blurb, finePrint: d.fine_print ?? null,
     actions: Array.isArray(d.actions) ? d.actions : [],
-    rewardItemId: d.reward_item_id, maxClaims: d.max_claims, claimsCount: d.claims_count,
+    rewardItemIds: d.reward_item_ids ?? [], cover: d.reward_cover ?? {},
+    minOrder: d.min_order === null || d.min_order === undefined ? null : Number(d.min_order),
+    tiers: Array.isArray(d.tiers) ? d.tiers : [],
+    maxClaims: d.max_claims, claimsCount: d.claims_count,
     endsAt: d.ends_at, active: d.active,
   };
 }

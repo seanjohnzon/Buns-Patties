@@ -1,27 +1,42 @@
 // Owner's home. Modelled on Toast Now: today's takings first and large, a
-// comparison to the same point last week, then what actually sold.
+// comparison to the same point last week, then what actually sold. Sold-out
+// switches sit right under the takings, because mid-service that is the one
+// thing he needs in two taps.
 import { Link } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Body, Button, Card, H2, Muted, Row, Screen, money } from '@/components/ui';
-import { getOwnerRewards, getOwnerToday, getProductMix } from '@/lib/api';
-import { mixShare, rewardsLiability, summariseToday, type MixRow, type RewardsRaw, type TodayRaw } from '@/lib/reporting';
+import { getMenu, getOwnerLoyalty, getOwnerToday, getProductMix, isSoldOut, setSoldOut } from '@/lib/api';
+import { mixShare, summariseToday, type LoyaltyRaw, type MixRow, type TodayRaw } from '@/lib/reporting';
+import type { MenuItem } from '@/lib/types';
 import { theme } from '@/lib/theme';
 
 export default function OwnerHome() {
   const [today, setToday] = useState<TodayRaw | null>(null);
   const [mix, setMix] = useState<MixRow[]>([]);
-  const [rewards, setRewards] = useState<RewardsRaw | null>(null);
+  const [loyalty, setLoyalty] = useState<LoyaltyRaw | null>(null);
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [off, setOff] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     setBusy(true);
-    Promise.all([getOwnerToday(), getProductMix(7), getOwnerRewards()])
-      .then(([t, m, r]) => { setToday(t); setMix(m); setRewards(r); })
+    Promise.all([getOwnerToday(), getProductMix(7), getOwnerLoyalty()])
+      .then(([t, m, r]) => { setToday(t); setMix(m); setLoyalty(r); })
       .catch(() => {})
       .finally(() => setBusy(false));
+    getMenu().then(({ items }) => {
+      setItems(items);
+      setOff(Object.fromEntries(items.map((i) => [i.id, isSoldOut(i)])));
+    }).catch(() => {});
   }, []);
+
+  async function toggleSoldOut(id: string, soldOut: boolean) {
+    setOff((o) => ({ ...o, [id]: soldOut }));
+    try { await setSoldOut(id, soldOut); }
+    catch (e: any) { setOff((o) => ({ ...o, [id]: !soldOut })); Alert.alert('Could not save', e.message ?? String(e)); }
+  }
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   if (!today) return <Screen style={{ alignItems: 'center', justifyContent: 'center' }}><Muted>Loading…</Muted></Screen>;
@@ -49,8 +64,22 @@ export default function OwnerHome() {
 
         <Row style={{ gap: 12 }}>
           <Stat label="Tips" value={money(s.tips)} sub={<Muted>Staff, not takings</Muted>} />
-          <Stat label="Given away" value={money(s.discount)} sub={<Muted>Points redeemed</Muted>} />
+          <Stat label="Given away" value={money(s.discount)} sub={<Muted>Free drinks & rewards</Muted>} />
         </Row>
+
+        <Card style={{ gap: 2 }}>
+          <Row style={{ justifyContent: 'space-between', marginBottom: 4 }}>
+            <H2>Sold out today</H2>
+            <Muted>Back on tomorrow by itself</Muted>
+          </Row>
+          {items.map((i) => (
+            <Row key={i.id} style={st.soldRow}>
+              <Body style={{ flex: 1, opacity: off[i.id] ? 0.45 : 1 }} numberOfLines={1}>{i.name}</Body>
+              {off[i.id] && <Text style={st.soldTag}>SOLD OUT</Text>}
+              <Switch value={!off[i.id]} onValueChange={(on) => toggleSoldOut(i.id, !on)} trackColor={{ true: theme.colors.accent }} />
+            </Row>
+          ))}
+        </Card>
 
         <Card style={{ gap: 10 }}>
           <Row style={{ justifyContent: 'space-between' }}>
@@ -71,28 +100,21 @@ export default function OwnerHome() {
           {best && <Muted>Prep {best.name} first — it outsells everything else.</Muted>}
         </Card>
 
-        {rewards && (
+        {loyalty && (
           <Card style={{ gap: 8 }}>
             <H2>Rewards</H2>
             <Row style={{ justifyContent: 'space-between' }}>
-              <Body>Points people are holding</Body>
-              <Body style={{ fontWeight: '700' }}>{rewards.pointsOutstanding.toLocaleString()}</Body>
+              <Body>Free items this week</Body>
+              <Body style={{ fontWeight: '700' }}>{loyalty.givenThisWeek} · {money(loyalty.givenValueThisWeek)}</Body>
             </Row>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Body>What that could cost you</Body>
-              <Body style={{ fontWeight: '700', color: theme.colors.danger }}>{money(rewardsLiability(rewards.pointsOutstanding))}</Body>
-            </Row>
-            <Muted>Not all of it gets claimed, but treat it as money owed.</Muted>
-            <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
-              <Muted>{rewards.members} members · {rewards.newThisWeek} new this week</Muted>
-            </Row>
+            <Muted>{loyalty.members} customers · {loyalty.newThisWeek} new this week</Muted>
           </Card>
         )}
 
         <View style={{ gap: 8 }}>
           <Link href="/staff/status" asChild><Button title="Open / close the truck" variant="secondary" /></Link>
-          <Link href="/owner/menu" asChild><Button title="Mark items sold out" variant="secondary" /></Link>
-          <Link href="/owner/campaigns" asChild><Button title="Offers and giveaways" variant="secondary" /></Link>
+          <Link href="/owner/campaigns" asChild><Button title="Campaigns and rewards" variant="secondary" /></Link>
+          <Link href="/owner/page" asChild><Button title="The truck page (story, reviews, links)" variant="secondary" /></Link>
           <Link href="/owner/feedback" asChild><Button title="What people are saying" variant="secondary" /></Link>
           <Link href="/owner/people" asChild><Button title="Who can use the staff screens" variant="secondary" /></Link>
           <Link href="/staff" asChild><Button title="Kitchen board" variant="secondary" /></Link>
@@ -132,4 +154,6 @@ const st = StyleSheet.create({
   sValue: { fontSize: 24, fontWeight: '800', color: theme.colors.text },
   track: { height: 6, backgroundColor: theme.colors.bgMuted, borderRadius: 3, overflow: 'hidden' },
   fill: { height: 6, backgroundColor: theme.colors.accent },
+  soldRow: { gap: 10, paddingVertical: 4 },
+  soldTag: { fontSize: 10, fontWeight: '800', letterSpacing: 1, color: theme.colors.heat },
 });

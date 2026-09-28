@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     catch { continue; }
 
     if (pi.status === 'succeeded') {
-      // Money taken, order never opened. Open it — the trigger awards the points.
+      // Money taken, order never opened. Open it — the trigger adds the stamp.
       const { error: e2 } = await sb.from('orders')
         .update({ status: 'received' })
         .eq('id', order.id)

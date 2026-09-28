@@ -1,7 +1,6 @@
 // Owner reporting maths. Pure and dependency-free so the numbers are testable —
 // the database does the aggregating, this turns the raw figures into what the
 // owner actually reads.
-import { POINTS } from './points.ts';
 import { round2 } from './pricing.ts';
 
 export type TodayRaw = {
@@ -13,11 +12,12 @@ export type TodayRaw = {
   ordersLastWeek: number;
 };
 
-export type RewardsRaw = {
-  pointsOutstanding: number;
+export type LoyaltyRaw = {
   members: number;
   newThisWeek: number;
-  redeemedThisWeek: number;
+  /** Free items that went out in paid orders this week, and what they would have cost. */
+  givenThisWeek: number;
+  givenValueThisWeek: number;
 };
 
 export type MixRow = { menuItemId: string; name: string; qty: number; revenue: number };
@@ -35,11 +35,6 @@ export function averageTicket(net: number, orders: number) {
 export function changeVsLastWeek(now: number, before: number): number | null {
   if (before <= 0) return null;
   return Math.round(((now - before) / before) * 100);
-}
-
-/** Outstanding points expressed as the dollars they can be redeemed for. */
-export function rewardsLiability(pointsOutstanding: number) {
-  return round2(Math.max(0, pointsOutstanding) / POINTS.redeemRate);
 }
 
 /** Share of total quantity, for the bar next to each item in the mix. */

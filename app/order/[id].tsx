@@ -53,7 +53,7 @@ export default function OrderStatus() {
             <Body style={{ fontWeight: '700' }}>Total</Body>
             <Body style={{ fontWeight: '700' }}>{money(order.total)}</Body>
           </Row>
-          {order.pointsEarned > 0 && <Muted>This order counts towards your next free item.</Muted>}
+          {order.stampsEarned > 0 && <Muted>+1 stamp on your card.</Muted>}
         </Card>
       </ScrollView>
     </Screen>

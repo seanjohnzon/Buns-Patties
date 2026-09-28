@@ -4,16 +4,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   worstCase, remainingClaims, hasEnded, isLive, canClaim, isUnspent,
-  actionIsOffered, actionIsUsable,
+  actionIsOffered, actionIsUsable, earnsStamp, cardSize, readyTiers, nextTier, afterRedeem,
 } from '../lib/campaigns.ts';
 
 const base = {
-  id: 'welcome_drink', title: 'Free drink', blurb: null,
+  id: 'welcome_drink', kind: 'action', title: 'Free drink', blurb: null, finePrint: null,
   actions: [
     { id: 'follow_instagram', label: 'Follow us', url: 'https://www.instagram.com/buns.patties' },
-    { id: 'google_review', label: 'Review us', url: '' },
+    { id: 'follow_tiktok', label: 'Follow us on TikTok', url: '' },
   ],
-  rewardItemId: 'can_drink', maxClaims: 1000, claimsCount: 0, endsAt: null, active: true,
+  rewardItemIds: ['can_drink'], cover: {}, minOrder: null, tiers: [],
+  maxClaims: 1000, claimsCount: 0, endsAt: null, active: true,
+};
+
+const card = {
+  ...base, id: 'stamp_card', kind: 'stamps', actions: [], rewardItemIds: [], minOrder: 15, maxClaims: null,
+  tiers: [
+    { stamps: 5, label: 'Free fries', itemIds: ['seasoned_fries'], cover: {} },
+    { stamps: 10, label: 'Free burger', itemIds: ['og', 'wake_n_smash', 'lone_star_heat', 'bbq_bacon'], cover: { patty: 2 } },
+  ],
 };
 
 test('the worst case is knowable before you start', () => {
@@ -72,4 +81,45 @@ test('an action with no link is not usable, so it cannot be tapped for a free dr
   for (const bad of ['', '   ', 'not a url', 'javascript:alert(1)', 'instagram.com']) {
     assert.equal(actionIsUsable({ id: 'x', label: 'x', url: bad }), false, `"${bad}" must not be usable`);
   }
+});
+
+// ---- the stamp card ----
+test('an order earns a stamp only at $15 or more, before tax', () => {
+  assert.equal(earnsStamp(card, 15), true);
+  assert.equal(earnsStamp(card, 14.99), false);
+  assert.equal(earnsStamp(card, 0), false, 'the free drink alone is not a stamp');
+});
+
+test('the card is as long as its biggest reward', () => {
+  assert.equal(cardSize(card), 10);
+});
+
+test('fries at 5, burger at 10, and both once you have 10', () => {
+  assert.deepEqual(readyTiers(card, 4).map((t) => t.stamps), []);
+  assert.deepEqual(readyTiers(card, 5).map((t) => t.stamps), [5]);
+  assert.deepEqual(readyTiers(card, 10).map((t) => t.stamps), [5, 10]);
+});
+
+test('the next reward is counted in orders, never in points', () => {
+  assert.deepEqual(nextTier(card, 3), { tier: card.tiers[0], ordersToGo: 2 });
+  assert.deepEqual(nextTier(card, 6), { tier: card.tiers[1], ordersToGo: 4 });
+  assert.equal(nextTier(card, 10), null);
+});
+
+test('taking fries at 5 spends 5; saving up for the burger spends 10', () => {
+  assert.equal(afterRedeem(5, card.tiers[0]), 0);
+  assert.equal(afterRedeem(7, card.tiers[0]), 2);
+  assert.equal(afterRedeem(10, card.tiers[1]), 0);
+  assert.equal(afterRedeem(3, card.tiers[1]), 0, 'never below zero');
+});
+
+test('the free burger is any burger but Build Your Own', () => {
+  const burger = card.tiers.find((t) => t.stamps === 10);
+  assert.ok(!burger.itemIds.includes('build_your_own'));
+  assert.equal(burger.cover.patty, 2, 'double patty on us, triple pays the difference');
+});
+
+test('a stamp card is live without a claim cap', () => {
+  assert.equal(isLive(card), true);
+  assert.equal(isLive({ ...card, tiers: [] }), false, 'a card with nothing on it is not shown');
 });

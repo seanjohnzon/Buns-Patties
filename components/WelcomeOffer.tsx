@@ -1,19 +1,18 @@
-// The free drink (and anything else the owner is giving away). One component so
-// the Home hook and the Rewards tab can never show different rules.
+// The free drink, and any other "do this, get that" offer the owner is running.
+// One component so the Home hook and the Rewards tab can never show different
+// rules. Stamp cards are components/StampCard.tsx.
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { MIN_AWAY_MS, useLeftTheApp } from '@/components/useLeftTheApp';
 import { Body, Button, Card, H1, Muted } from '@/components/ui';
-import { claimCampaign, getCampaigns, getItem, getMyCampaignClaims } from '@/lib/api';
+import { claimCampaign, getCampaigns, getMyCampaignClaims } from '@/lib/api';
 import { actionIsUsable, canClaim, isUnspent, remainingClaims, type Campaign, type CampaignAction, type CampaignClaim } from '@/lib/campaigns';
-import { useCart } from '@/lib/cart';
 import { theme } from '@/lib/theme';
 
 export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [claims, setClaims] = useState<CampaignClaim[]>([]);
-  const add = useCart((s) => s.add);
   const router = useRouter();
   const pending = useRef<{ campaignId: string; actionId: string } | null>(null);
 
@@ -45,16 +44,16 @@ export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
     catch { pending.current = null; disarm(); Alert.alert('Could not open that'); }
   }
 
-  async function useOffer(c: Campaign) {
-    if (!c.rewardItemId) return;
-    const item = await getItem(c.rewardItemId);
-    if (!item) return;
-    const group = item.modifierGroups.find((g) => g.required);
-    add({ ...item, price: 0, name: `${item.name} (on us)` }, group ? [group.options[0]] : [], 1, undefined, { campaign: c.id });
-    router.push('/cart');
+  // They pick which drink (or which of the items) — it opens like any item, priced at nothing.
+  function useOffer(c: Campaign) {
+    if (c.rewardItemIds.length === 1) {
+      router.push({ pathname: '/item/[id]', params: { id: c.rewardItemIds[0], claim: c.id } });
+    } else if (c.rewardItemIds.length > 1) {
+      router.push({ pathname: '/reward', params: { campaign: c.id } });
+    }
   }
 
-  const live = campaigns.filter((c) => {
+  const live = campaigns.filter((c) => c.kind === 'action').filter((c) => {
     const claim = claims.find((x) => x.campaignId === c.id);
     if (claim?.usedAt) return false;
     if (!claim && !canClaim(c, claim)) return false;
@@ -76,7 +75,7 @@ export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
             {isUnspent(claim) ? (
               <View style={{ gap: 8, marginTop: 6 }}>
                 <Body style={{ color: theme.colors.accent, fontWeight: '700' }}>Unlocked — thank you</Body>
-                <Button title="Add it to my order" style={{ backgroundColor: theme.colors.accent }} onPress={() => useOffer(c)} />
+                <Button title={c.rewardItemIds[0] === 'can_drink' ? 'Pick your drink' : 'Pick yours'} style={st.cta} onPress={() => useOffer(c)} />
               </View>
             ) : (
               <View style={{ gap: 8, marginTop: 6 }}>
@@ -84,7 +83,7 @@ export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
                   {usable.length > 1 ? 'Do one of these and it’s yours:' : 'Do this and it’s yours:'}
                 </Muted>
                 {usable.map((a) => (
-                  <Button key={a.id} title={a.label} style={{ backgroundColor: theme.colors.accent }} onPress={() => doAction(c, a)} />
+                  <Button key={a.id} title={a.label} style={st.cta} onPress={() => doAction(c, a)} />
                 ))}
                 {usable.length === 0 && <Muted style={{ color: 'rgba(255,255,255,0.75)' }}>Coming soon.</Muted>}
                 {left !== null && left < 50 && <Muted style={{ color: theme.colors.accent }}>Only {left} left</Muted>}
@@ -98,6 +97,7 @@ export function WelcomeOffer({ onEmpty }: { onEmpty?: () => void } = {}) {
 }
 
 const st = StyleSheet.create({
-  offer: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand, gap: 4 },
+  offer: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand, gap: 4, padding: 18, borderRadius: theme.radius.lg },
+  cta: { backgroundColor: theme.colors.accent },
   kicker: { color: theme.colors.accent, fontWeight: '800', fontSize: 11, letterSpacing: 1.5 },
 });

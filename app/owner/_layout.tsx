@@ -10,7 +10,8 @@ export default function OwnerLayout() {
         <Stack.Screen name="menu" options={{ title: "What's on" }} />
         <Stack.Screen name="people" options={{ title: 'Staff' }} />
         <Stack.Screen name="feedback" options={{ title: 'What people say' }} />
-        <Stack.Screen name="campaigns" options={{ title: 'Offers' }} />
+        <Stack.Screen name="campaigns" options={{ title: 'Campaigns' }} />
+        <Stack.Screen name="page" options={{ title: 'The truck page' }} />
       </Stack>
     </RequireRole>
   );

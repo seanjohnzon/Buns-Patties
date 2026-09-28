@@ -8,7 +8,7 @@ import { money } from './ui';
 export function CartBar() {
   const lines = useCart((s) => s.lines);
   if (lines.length === 0) return null;
-  const t = cartTotals(lines, 0, 0);
+  const t = cartTotals(lines, 0);
   return (
     <View style={s.wrap}>
       <Link href="/cart" asChild>

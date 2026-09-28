@@ -1,6 +1,6 @@
 // Cart + checkout — name for the order, pickup time, tip, Stripe PaymentSheet.
-// Rewards arrive here as a $0 line from the Rewards screen; there is no points
-// arithmetic on this screen, deliberately.
+// Rewards arrive here as a line marked "on us" (the free drink, a stamp-card
+// reward); only real extras on them are charged.
 import { useStripe } from '@/lib/stripe';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -8,16 +8,15 @@ import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } fro
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
 import { createCheckoutSession, createOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
 import { cartTotals, lineTotal, useCart } from '@/lib/cart';
+import { summarise } from '@/lib/modifiers';
 import { checkoutBlock } from '@/lib/availability';
-import { pointsForOrder } from '@/lib/points';
 import { hasSupabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
 const TIPS = [0, 0.1, 0.15, 0.2];
 
 export default function Cart() {
-  const { lines, tip, redeemPoints, pickupAt, setQty, setTip, setRedeemPoints, setPickupAt, clear } = useCart();
-  const [points, setPoints] = useState(0);
+  const { lines, tip, pickupAt, setQty, setTip, setPickupAt, remove, clear } = useCart();
   const [pickupName, setPickupName] = useState('');
   const [open, setOpen] = useState<boolean | null>(null);
   const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
@@ -26,12 +25,12 @@ export default function Cart() {
   const stripe = useStripe();
 
   useEffect(() => {
-    getProfile().then((p) => { setPoints(p?.points ?? 0); if (p?.name) setPickupName(p.name); }).catch(() => {});
+    getProfile().then((p) => { if (p?.name) setPickupName(p.name); }).catch(() => {});
     // Re-checked every time the cart opens: the truck may have shut since.
     getTruckStatus().then((s) => { setOpen(s.isOpen); setPaymentsEnabled(s.paymentsEnabled ?? false); }).catch(() => setOpen(null));
   }, []);
 
-  const t = cartTotals(lines, tip, redeemPoints);
+  const t = cartTotals(lines, tip);
   const gate = checkoutBlock({ open, paymentsEnabled, total: t.total, name: pickupName });
 
   async function pay() {
@@ -45,7 +44,7 @@ export default function Cart() {
       lines: lines.map((l) => ({
         menuItemId: l.item.id, name: l.item.name, qty: l.qty,
         mods: l.chosen.map((o) => o.name), note: l.note,
-        campaign: l.claim?.campaign, reward: l.claim?.reward,
+        campaign: l.claim?.campaign, tier: l.claim?.tier,
       })),
       tip: t.tip, pickupAt, pickupName: pickupName.trim(),
     };
@@ -98,10 +97,10 @@ export default function Cart() {
             <Row key={l.key} style={{ justifyContent: 'space-between', gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Body style={{ fontWeight: '600' }}>{l.item.name}</Body>
-                {l.chosen.length > 0 && <Muted>{l.chosen.map((o) => o.name).join(', ')}</Muted>}
+                {l.chosen.length > 0 && <Muted>{summarise(l.chosen)}</Muted>}
                 {!!l.note && <Muted>“{l.note}”</Muted>}
               </View>
-              {l.claim ? <Muted>Free</Muted> : <Stepper qty={l.qty} onChange={(q) => setQty(l.key, q)} />}
+              {l.claim ? <Button title="Remove" variant="ghost" onPress={() => remove(l.key)} style={{ paddingHorizontal: 8, paddingVertical: 6 }} /> : <Stepper qty={l.qty} onChange={(q) => setQty(l.key, q)} />}
               <Body style={{ minWidth: 60, textAlign: 'right' }}>{money(lineTotal(l))}</Body>
             </Row>
           ))}
@@ -137,7 +136,7 @@ export default function Cart() {
 
         <View style={{ gap: 6 }}>
           <Line label="Subtotal" v={t.subtotal} />
-          {t.discount > 0 && <Line label="Reward" v={-t.discount} />}
+          {t.saved > 0 && <Muted>On us today: {money(t.saved)}</Muted>}
           {t.tax > 0 && <Line label="Tax" v={t.tax} />}
           {t.tip > 0 && <Line label="Tip" v={t.tip} />}
           <Line label="Total" v={t.total} bold />

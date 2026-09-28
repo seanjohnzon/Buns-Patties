@@ -51,10 +51,16 @@ test('the paid toppings are the three on the board, at $1.50', () => {
   for (const o of paid) assert.equal(o.priceDelta, 1.5, `${o.name} should be +$1.50`);
 });
 
-test('every other topping and all sauces are free', () => {
+test('every other topping and all burger sauces are free', () => {
   const free = groups.toppings_add.options.filter((o) => !['t_avocado', 't_bacon', 't_egg'].includes(o.id));
   for (const o of free) assert.equal(o.priceDelta, 0, `${o.name} should be free`);
-  for (const o of groups.sauces_add.options) assert.equal(o.priceDelta, 0, `${o.name} should be free`);
+  for (const o of groups.sauce.options) assert.equal(o.priceDelta, 0, `${o.name} should be free`);
+});
+
+test('sauce cups on seasoned fries are 25 cents each, and counted', () => {
+  assert.equal(groups.fry_sauces.counted, true);
+  for (const o of groups.fry_sauces.options) assert.equal(o.priceDelta, 0.25, o.name);
+  assert.deepEqual(byId.seasoned_fries.modifierGroups, ['fry_sauces']);
 });
 
 test('wings carry all five dry rubs and three wet rubs', () => {
@@ -100,18 +106,56 @@ test('required groups can actually be satisfied', () => {
   }
 });
 
-test('every burger can have its own ingredients removed', () => {
-  for (const id of ['og', 'wake_n_smash', 'lone_star_heat', 'bbq_bacon']) {
-    const hasRemove = byId[id].modifierGroups.some((g) => g.startsWith('rm_'));
-    assert.ok(hasRemove, `${id} has no "remove" group, so customers cannot say "no pickles"`);
+const SIGNATURE = ['og', 'wake_n_smash', 'lone_star_heat', 'bbq_bacon'];
+
+test('every burger opens with its own sauce and its cheese already picked', () => {
+  for (const id of SIGNATURE) {
+    const item = byId[id];
+    assert.ok(item.defaults?.sauce?.length, `${id} has no default sauce`);
+    assert.deepEqual(item.defaults.cheese, ['c_american'], `${id} should come with American cheese`);
+    for (const s of item.defaults.sauce) assert.ok(groups.sauce.options.some((o) => o.id === s), `${id}: unknown sauce ${s}`);
   }
 });
 
-test('every reward points at a real menu item', () => {
-  for (const r of seed.rewards) {
-    assert.ok(byId[r.menuItemId], `reward "${r.id}" points at missing item "${r.menuItemId}"`);
-    assert.ok(r.pointsCost > 0, `reward "${r.id}" costs nothing`);
+test('no sauce and no cheese are real choices', () => {
+  assert.ok(groups.sauce.options.some((o) => o.id === 's_none'));
+  assert.ok(groups.sauce.exclusive.includes('s_none'), '"No sauce" clears the others');
+  assert.ok(groups.cheese.options.some((o) => o.id === 'c_none'));
+});
+
+test('what comes on a burger is listed, never removable, never sold back to you', () => {
+  // BBQ Bacon already has beef bacon: offering it as a $1.50 add-on charged
+  // people for what they were already getting.
+  const NAME = { t_lettuce: 'Lettuce', t_pickles: 'Pickles', t_tomatoes: 'Tomatoes', t_cucumbers: 'Cucumber',
+    t_onions: 'onion', t_jalapenos: 'Jalapeños', t_avocado: 'Avocado', t_bacon: 'Beef bacon' };
+  for (const id of SIGNATURE) {
+    const item = byId[id];
+    assert.ok(item.includes?.length, `${id} lists nothing it comes with`);
+    assert.ok(!item.modifierGroups.some((g) => g.startsWith('rm_')), `${id} still has a remove list`);
+    const add = groups[item.modifierGroups.find((g) => g.startsWith('add_'))];
+    for (const o of add.options) {
+      const n = NAME[o.id];
+      if (!n) continue;
+      assert.ok(!item.includes.some((x) => x.toLowerCase().includes(n.toLowerCase())), `${id} sells ${o.name} it already comes with`);
+    }
   }
+  assert.ok(!groups.add_bbq.options.some((o) => o.id === 't_bacon'), 'BBQ Bacon must not sell bacon');
+  assert.ok(!groups.add_wake.options.some((o) => o.id === 't_avocado'), 'Wake N Smash must not sell avocado');
+});
+
+test('wings: one flavor for 4 or 6, two for 8 or 10', () => {
+  const f = groups.wing_flavor;
+  assert.equal(f.max, 1);
+  assert.deepEqual(f.maxWhen, [{ group: 'wing_count', options: ['w_8', 'w_10'], max: 2 }]);
+});
+
+test('smash fries: toppings before sauce, sauce required, up to two, or none', () => {
+  const g = byId.smash_fries.modifierGroups;
+  assert.ok(g.indexOf('toppings_add') < g.indexOf('sauce'), 'toppings come first');
+  assert.ok(g.includes('cheese'), 'no-cheese option');
+  assert.equal(groups.sauce.required, true);
+  assert.equal(groups.sauce.max, 2);
+  assert.equal(byId.smash_fries.defaults?.sauce, undefined, 'they choose their own sauce');
 });
 
 test('no item is priced at zero or negative', () => {

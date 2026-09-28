@@ -5,14 +5,16 @@ import { theme } from '@/lib/theme';
 import type { MenuItem } from '@/lib/types';
 import { money, Muted } from './ui';
 
-export function MenuItemRow({ item }: { item: MenuItem }) {
+/** `claim`/`tier` open the item as a reward (see app/reward.tsx). */
+export function MenuItemRow({ item, claim, tier }: { item: MenuItem; claim?: string; tier?: string }) {
+  const params = claim ? { id: item.id, claim, tier: tier ?? '' } : { id: item.id };
   return (
-    <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
+    <Link href={{ pathname: '/item/[id]', params }} replace={!!claim} asChild>
       <Pressable style={s.row}>
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={s.name}>{item.name}</Text>
           {!!item.description && <Muted numberOfLines={2}>{item.description}</Muted>}
-          <Text style={s.price}>{money(item.price)}</Text>
+          <Text style={s.price}>{claim ? 'On us' : money(item.price)}</Text>
         </View>
         <View style={s.imgWrap}>
           <ItemImage uri={item.imageUrl} style={s.img} />

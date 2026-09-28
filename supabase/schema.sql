@@ -2,7 +2,7 @@
 
 create extension if not exists pgcrypto;
 
--- ---------- profiles + points ----------
+-- ---------- profiles ----------
 -- One account type, three roles. There is no separate admin login: the owner
 -- signs in with the same phone code as everyone else and their role decides what
 -- they see. Square and Toast work the same way — a second password system would be
@@ -14,20 +14,9 @@ create table profiles (
   name text,
   phone text,
   birthday date,
-  points int not null default 0,
   role app_role not null default 'customer',
   stripe_customer_id text,
   expo_push_token text,
-  created_at timestamptz default now()
-);
-
-create table points_ledger (
-  id bigserial primary key,
-  user_id uuid not null references profiles(id) on delete cascade,
-  delta int not null,
-  reason text not null,            -- signup | order | walkup | redeem | birthday | manual
-  order_id uuid,
-  amount numeric(10,2),
   created_at timestamptz default now()
 );
 
@@ -43,26 +32,14 @@ create or replace function is_owner() returns boolean
   select exists (select 1 from profiles where id = auth.uid() and role = 'owner');
 $$;
 
--- signup bonus + profile row on new auth user
--- No signup bonus: the welcome drink is earned by following or reviewing,
--- not given away for installing.
+-- profile row on new auth user. No signup bonus: the welcome drink is earned
+-- by following, not given away for installing.
 create or replace function handle_new_user() returns trigger language plpgsql security definer as $$
 begin
   insert into profiles (id, phone) values (new.id, new.phone);
   return new;
 end $$;
 create trigger on_auth_user_created after insert on auth.users for each row execute function handle_new_user();
-
--- keep profiles.points in sync with the ledger
-create or replace function apply_ledger() returns trigger language plpgsql security definer as $$
-begin
-  update profiles set points = points + new.delta where id = new.user_id;
-  return new;
-end $$;
-create trigger on_ledger_insert after insert on points_ledger for each row execute function apply_ledger();
-
--- Points are only ever awarded by the order trigger, after Stripe confirms the
--- money. There is deliberately no way for staff to hand out points by hand.
 
 -- ---------- menu ----------
 create table categories (
@@ -79,18 +56,12 @@ create table menu_items (
   price numeric(10,2) not null,
   image_url text,
   modifier_groups jsonb not null default '[]',   -- same shape as lib/types ModifierGroup[]
+  includes jsonb not null default '[]',          -- what comes on it, listed, not removable
+  defaults jsonb not null default '{}',          -- options pre-picked when it opens: {"sauce":["s_bbq"]}
   featured boolean not null default false,
   available boolean not null default true,
   sold_out_until date,                            -- staff flip this when they run out
   sort int not null default 0
-);
-
-create table rewards (
-  id text primary key,
-  name text not null,
-  points_cost int not null,
-  image_url text,
-  menu_item_id text references menu_items(id)
 );
 
 create table truck_status (
@@ -104,6 +75,16 @@ create table truck_status (
   prep_minutes int not null default 15,
   halal boolean not null default true,
   instagram text,
+  -- The truck's page, set by the owner. Empty fields are simply not shown.
+  story text,
+  contact_phone text,
+  contact_email text,
+  tiktok text,
+  facebook text,
+  doordash_url text,
+  ubereats_url text,
+  grubhub_url text,
+  testimonials jsonb not null default '[]',   -- [{"name","quote","stars"}], his picks from Google
   -- Off until Stripe has approved the owner and we have connected it. While off,
   -- only $0 orders (the free drink) can go through; paid carts are told to pay
   -- at the window instead of hitting an error at checkout.
@@ -121,10 +102,10 @@ create table orders (
   subtotal numeric(10,2) not null,
   tax numeric(10,2) not null default 0,
   tip numeric(10,2) not null default 0,
-  discount numeric(10,2) not null default 0,
+  discount numeric(10,2) not null default 0,   -- what the free lines were worth; NOT taken off total
   total numeric(10,2) not null,
-  redeem_points int not null default 0,
-  points_earned int not null default 0,
+  stamps_earned int not null default 0,
+  stamp_spend jsonb not null default '{}',     -- {"stamp_card": 5}: given back if the order dies
   pickup_at timestamptz,
   pickup_name text,               -- called out at the window, DoorDash style
   stripe_payment_intent text unique,
@@ -141,19 +122,43 @@ create table order_lines (
   qty int not null,
   unit_price numeric(10,2) not null,
   mods text[] not null default '{}',
-  note text
+  note text,
+  campaign_id text,                -- set when this line was a reward
+  list_price numeric(10,2)         -- what it would have cost, for the owner's "given away"
 );
 
--- When Stripe webhook flips status to 'received': award points, deduct redeemed points.
-create or replace function on_order_paid() returns trigger language plpgsql security definer as $$
+-- Paid: a stamp on every live stamp card whose minimum it clears.
+-- Dead (cancelled — an abandoned checkout, or a refund): give back what it spent,
+-- and take back the stamp it earned. Nobody loses a reward to a failed payment.
+create or replace function on_order_paid() returns trigger language plpgsql security definer set search_path = public as $$
+declare c record; k text; n int;
 begin
   if old.status = 'pending_payment' and new.status = 'received' then
-    new.points_earned := floor(new.subtotal * 5);  -- 5% back, see lib/points.ts
-    insert into points_ledger (user_id, delta, reason, order_id, amount) values (new.user_id, new.points_earned, 'order', new.id, new.subtotal);
-    if new.redeem_points > 0 then
-      insert into points_ledger (user_id, delta, reason, order_id) values (new.user_id, -new.redeem_points, 'redeem', new.id);
-    end if;
+    for c in select id from campaigns
+             where kind = 'stamps' and active and (ends_at is null or ends_at > now())
+               and new.subtotal > 0 and new.subtotal >= coalesce(min_order, 0) loop
+      insert into campaign_stamps (campaign_id, user_id, stamps) values (c.id, new.user_id, 1)
+        on conflict (campaign_id, user_id) do update set stamps = campaign_stamps.stamps + 1, updated_at = now();
+      new.stamps_earned := new.stamps_earned + 1;
+      new.stamp_spend := new.stamp_spend || jsonb_build_object('earned:' || c.id, 1);
+    end loop;
   end if;
+
+  if new.status = 'cancelled' and old.status <> 'cancelled' then
+    for k, n in select key, value::int from jsonb_each_text(new.stamp_spend) loop
+      if k like 'earned:%' then
+        update campaign_stamps set stamps = greatest(0, stamps - n), updated_at = now()
+          where campaign_id = substr(k, 8) and user_id = new.user_id;
+      else
+        insert into campaign_stamps (campaign_id, user_id, stamps) values (k, new.user_id, n)
+          on conflict (campaign_id, user_id) do update set stamps = campaign_stamps.stamps + n, updated_at = now();
+      end if;
+    end loop;
+    new.stamps_earned := 0;
+    -- One-off offers (the free drink) become usable again.
+    update campaign_claims set used_at = null, used_order_id = null where used_order_id = new.id;
+  end if;
+
   new.updated_at := now();
   return new;
 end $$;
@@ -161,17 +166,14 @@ create trigger on_order_status before update on orders for each row execute func
 
 -- ---------- RLS ----------
 alter table profiles enable row level security;
-alter table points_ledger enable row level security;
 alter table orders enable row level security;
 alter table order_lines enable row level security;
 alter table categories enable row level security;
 alter table menu_items enable row level security;
-alter table rewards enable row level security;
 alter table truck_status enable row level security;
 
 create policy "public read menu" on categories for select using (true);
 create policy "public read items" on menu_items for select using (true);
-create policy "public read rewards" on rewards for select using (true);
 create policy "public read status" on truck_status for select using (true);
 
 create policy "own profile" on profiles for select using (id = auth.uid() or is_staff());
@@ -179,7 +181,6 @@ create policy "update own profile" on profiles for update using (id = auth.uid()
 -- Only the owner may change anyone's role, and never their own (no self-demotion
 -- locking the truck out, no staff promoting themselves).
 create policy "owner sets roles" on profiles for update using (is_owner() and id <> auth.uid());
-create policy "own ledger" on points_ledger for select using (user_id = auth.uid());
 
 create policy "own orders" on orders for select using (user_id = auth.uid() or is_staff());
 create policy "staff update orders" on orders for update using (is_staff());
@@ -206,14 +207,14 @@ begin
   with windows as (
     select
       -- today so far
-      sum(case when created_at >= today_start then subtotal - discount end)          as net_today,
+      sum(case when created_at >= today_start then subtotal end)                     as net_today,
       sum(case when created_at >= today_start then tip end)                          as tips_today,
       count(*) filter (where created_at >= today_start)                              as orders_today,
       sum(case when created_at >= today_start then discount end)                     as discount_today,
       -- the same slice of the day, one week ago (Toast's day-over-day comparison)
       sum(case when created_at >= today_start - interval '7 days'
                 and created_at < today_start - interval '7 days' + (now() - today_start)
-               then subtotal - discount end)                                         as net_last_week,
+               then subtotal end)                                                    as net_last_week,
       count(*) filter (where created_at >= today_start - interval '7 days'
                          and created_at < today_start - interval '7 days' + (now() - today_start))
                                                                                      as orders_last_week
@@ -247,18 +248,21 @@ begin
     order by sum(l.qty) desc;
 end $$;
 
--- Outstanding points are money you owe. Easy to forget it is a liability.
-create or replace function owner_rewards()
+-- Who is signing up, and what the giveaways are costing this week.
+create or replace function owner_loyalty()
 returns json language plpgsql stable security definer set search_path = public as $$
 declare result json;
 begin
   if not is_owner() then raise exception 'owner only'; end if;
   select json_build_object(
-    'pointsOutstanding', coalesce((select sum(points) from profiles), 0),
-    'members',           (select count(*) from profiles where role = 'customer'),
-    'newThisWeek',       (select count(*) from profiles where created_at >= now() - interval '7 days'),
-    'redeemedThisWeek',  coalesce((select -sum(delta) from points_ledger
-                                    where reason = 'redeem' and created_at >= now() - interval '7 days'), 0)
+    'members',          (select count(*) from profiles where role = 'customer'),
+    'newThisWeek',      (select count(*) from profiles where created_at >= now() - interval '7 days'),
+    'givenThisWeek',    coalesce((select sum(l.qty) from order_lines l join orders o on o.id = l.order_id
+                                   where l.campaign_id is not null and o.status not in ('pending_payment','cancelled')
+                                     and o.created_at >= now() - interval '7 days'), 0),
+    'givenValueThisWeek', coalesce((select sum(l.list_price * l.qty) from order_lines l join orders o on o.id = l.order_id
+                                   where l.campaign_id is not null and o.status not in ('pending_payment','cancelled')
+                                     and o.created_at >= now() - interval '7 days'), 0)
   ) into result;
   return result;
 end $$;
@@ -360,8 +364,11 @@ begin
 end $$;
 
 -- ---------- campaigns ----------
--- Everything we give away is a campaign, including the free drink on the sticker.
--- The owner makes the rest: "like the post", "share the reel", whatever he wants.
+-- Everything we give away is a campaign. There are no points. Two kinds:
+--   action — do one thing (follow, tag, open a link), get one free item. The free
+--            drink on the sticker is one of these.
+--   stamps — every order over min_order is a stamp; tiers say what 5 or 10 buy.
+-- The owner builds both from his phone.
 --
 -- Nothing anyone gives away here can be verified — Instagram and Google will not
 -- tell an app who followed, liked or reviewed. So the controls are not "did they
@@ -370,11 +377,17 @@ end $$;
 -- known before it starts: max_claims x what it costs you.
 create table campaigns (
   id text primary key,
+  kind text not null default 'action' check (kind in ('action', 'stamps')),
   title text not null,                       -- "Free drink on us"
   blurb text,                                -- shown under the title
-  -- Any ONE of these unlocks it: [{"id":"ig","label":"Follow us","url":"https://..."}]
+  fine_print text,                           -- "Orders of $15 or more count."
+  -- action: any ONE of these unlocks it: [{"id":"follow_instagram","label":"Follow us","url":"https://..."}]
   actions jsonb not null default '[]',
-  reward_item_id text references menu_items(id),
+  reward_item_ids text[] not null default '{}',   -- action: they pick one of these
+  reward_cover jsonb not null default '{}',       -- option-group dollars that are free too: {"patty": 2}
+  -- stamps
+  min_order numeric(10,2),                   -- food before tax, to earn a stamp
+  tiers jsonb not null default '[]',         -- [{"stamps":5,"label":"Free fries","itemIds":["seasoned_fries"],"cover":{}}]
   max_claims int,                            -- null = no cap (avoid)
   claims_count int not null default 0,
   starts_at timestamptz default now(),
@@ -393,8 +406,19 @@ create table campaign_claims (
   primary key (campaign_id, user_id)         -- one per person per campaign, full stop
 );
 
+-- Stamp card balances. Written only by the order trigger and spend_stamps().
+create table campaign_stamps (
+  campaign_id text not null references campaigns(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  stamps int not null default 0 check (stamps >= 0),
+  updated_at timestamptz default now(),
+  primary key (campaign_id, user_id)
+);
+
 alter table campaigns enable row level security;
 alter table campaign_claims enable row level security;
+alter table campaign_stamps enable row level security;
+create policy "own stamps" on campaign_stamps for select using (user_id = auth.uid() or is_owner());
 
 create policy "anyone reads live campaigns" on campaigns for select
   using (active and (ends_at is null or ends_at > now()));
@@ -413,6 +437,7 @@ begin
   if not found or not c.active then raise exception 'that offer is not running'; end if;
   if c.ends_at is not null and c.ends_at <= now() then raise exception 'that offer has ended'; end if;
   if c.starts_at is not null and c.starts_at > now() then raise exception 'that offer has not started'; end if;
+  if c.kind <> 'action' then raise exception 'that offer is earned by ordering'; end if;
   if c.max_claims is not null and c.claims_count >= c.max_claims then raise exception 'that offer is all gone'; end if;
   -- The action has to be one this campaign actually offers.
   if not exists (select 1 from jsonb_array_elements(c.actions) a where a->>'id' = p_action) then
@@ -431,33 +456,57 @@ begin
 end $$;
 
 
--- The one campaign that ships with the app: the drink printed on the sticker.
--- Everything after this the owner makes himself.
-insert into campaigns (id, title, blurb, actions, reward_item_id, max_claims) values (
-  'welcome_drink',
+-- Spending stamps on a reward. Only the checkout function calls this (service
+-- role); customers cannot. Conditional, so two checkouts at once cannot both spend
+-- the same stamps.
+create or replace function spend_stamps(p_user uuid, p_campaign text, p_n int)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  update campaign_stamps set stamps = stamps - p_n, updated_at = now()
+    where campaign_id = p_campaign and user_id = p_user and stamps >= p_n;
+  return found;
+end $$;
+revoke execute on function spend_stamps(uuid, text, int) from public, anon, authenticated;
+
+-- The two campaigns that ship with the app. Everything after this the owner makes.
+-- 1. The drink on the sticker: follow us, pick any can. One per phone number.
+insert into campaigns (id, kind, title, blurb, actions, reward_item_ids, max_claims) values (
+  'welcome_drink', 'action',
   'Free drink',
-  'On us, for your first order',
-  '[{"id":"follow_instagram","label":"Follow us on Instagram","url":"https://www.instagram.com/buns.patties"},
-    {"id":"google_review","label":"Leave a Google review","url":"https://maps.google.com/?cid=559877457463287649"}]'::jsonb,
-  'can_drink',
+  'Follow us and your first drink is on us',
+  '[{"id":"follow_instagram","label":"Follow us on Instagram","url":"https://www.instagram.com/buns.patties"}]'::jsonb,
+  '{can_drink}',
   1000            -- a known ceiling: 1000 drinks, then it stops on its own
 );
+-- 2. The stamp card. Fries at 5, or keep going to a burger at 10. The free burger
+--    is any burger but Build Your Own; a double patty is on us ($2), a triple pays
+--    the difference, and paid toppings are paid.
+insert into campaigns (id, kind, title, blurb, fine_print, min_order, tiers) values (
+  'stamp_card', 'stamps',
+  'Stamp card',
+  'Every order is a stamp',
+  'Orders of $15 or more before tax earn a stamp. One stamp per order. Taking a reward uses its stamps.',
+  15,
+  '[{"stamps":5,"label":"Free fries","itemIds":["seasoned_fries"],"cover":{}},
+    {"stamps":10,"label":"Free burger","itemIds":["og","wake_n_smash","lone_star_heat","bbq_bacon"],"cover":{"patty":2}}]'::jsonb
+);
 
--- What each campaign has actually cost, for the owner screen.
+-- What each campaign has actually cost, for the owner screen: the full price of
+-- every reward line in a paid order.
 create or replace function owner_campaigns()
 returns table (
-  id text, title text, active boolean, ends_at timestamptz,
+  id text, kind text, title text, active boolean, ends_at timestamptz,
   max_claims int, claims_count int, used_count bigint, cost numeric
 ) language plpgsql stable security definer set search_path = public as $$
 begin
   if not is_owner() then raise exception 'owner only'; end if;
   return query
-    select c.id, c.title, c.active, c.ends_at, c.max_claims, c.claims_count,
-           count(cc.used_at) as used_count,
-           coalesce(count(cc.used_at) * mi.price, 0) as cost
+    select c.id, c.kind, c.title, c.active, c.ends_at, c.max_claims, c.claims_count,
+           coalesce(sum(l.qty) filter (where o.id is not null), 0)::bigint as used_count,
+           coalesce(sum(l.list_price * l.qty) filter (where o.id is not null), 0) as cost
     from campaigns c
-    left join campaign_claims cc on cc.campaign_id = c.id
-    left join menu_items mi on mi.id = c.reward_item_id
-    group by c.id, c.title, c.active, c.ends_at, c.max_claims, c.claims_count, mi.price
-    order by c.created_at desc;
+    left join order_lines l on l.campaign_id = c.id
+    left join orders o on o.id = l.order_id and o.status not in ('pending_payment', 'cancelled')
+    group by c.id, c.kind, c.title, c.active, c.ends_at, c.max_claims, c.claims_count
+    order by c.created_at;
 end $$;
