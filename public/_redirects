@@ -1,0 +1,4 @@
+# Cloudflare Pages / Netlify. Dynamic routes must resolve, or the post-payment
+# return from Stripe 404s.
+/item/*    /item/[id].html    200
+/order/*   /order/[id].html   200

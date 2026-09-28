@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+
+# Expo Router exports dynamic routes as literal [id] files. Without these, a
+# customer coming back from Stripe to /order/<id> gets a 404 and thinks they
+# have lost their money.
+[[redirects]]
+  from = "/item/*"
+  to = "/item/[id].html"
+  status = 200
+
+[[redirects]]
+  from = "/order/*"
+  to = "/order/[id].html"
+  status = 200

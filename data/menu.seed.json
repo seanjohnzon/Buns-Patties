@@ -1,0 +1,682 @@
+{
+  "truck": {
+    "name": "Buns & Patties",
+    "tagline": "Burgers & Fries \u00b7 Houston",
+    "halal": true,
+    "isOpen": false,
+    "locationName": "TBD",
+    "address": "Houston, TX",
+    "lat": null,
+    "lng": null,
+    "hoursText": "TBD",
+    "prepMinutes": 15,
+    "instagram": "https://www.instagram.com/buns.patties"
+  },
+  "categories": [
+    {
+      "id": "burgers",
+      "name": "Smash Burgers",
+      "sort": 1
+    },
+    {
+      "id": "wings",
+      "name": "Wings",
+      "sort": 2
+    },
+    {
+      "id": "fries",
+      "name": "Fries",
+      "sort": 3
+    },
+    {
+      "id": "beverages",
+      "name": "Beverages",
+      "sort": 4
+    }
+  ],
+  "modifierGroups": {
+    "patty": {
+      "id": "patty",
+      "name": "Patties",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "options": [
+        {
+          "id": "p_single",
+          "name": "Single patty",
+          "priceDelta": 0
+        },
+        {
+          "id": "p_double",
+          "name": "Double patty",
+          "priceDelta": 2
+        },
+        {
+          "id": "p_triple",
+          "name": "Triple patty",
+          "priceDelta": 4
+        }
+      ]
+    },
+    "toppings_add": {
+      "id": "toppings_add",
+      "name": "Add toppings",
+      "required": false,
+      "min": 0,
+      "max": 9,
+      "options": [
+        {
+          "id": "t_lettuce",
+          "name": "Lettuce",
+          "priceDelta": 0
+        },
+        {
+          "id": "t_pickles",
+          "name": "Pickles",
+          "priceDelta": 0
+        },
+        {
+          "id": "t_tomatoes",
+          "name": "Tomatoes",
+          "priceDelta": 0
+        },
+        {
+          "id": "t_cucumbers",
+          "name": "Cucumbers",
+          "priceDelta": 0
+        },
+        {
+          "id": "t_onions",
+          "name": "Sliced onions",
+          "priceDelta": 0
+        },
+        {
+          "id": "t_jalapenos",
+          "name": "Jalape\u00f1os",
+          "priceDelta": 0
+        },
+        {
+          "id": "t_egg",
+          "name": "Fried egg",
+          "priceDelta": 1.5
+        },
+        {
+          "id": "t_avocado",
+          "name": "Avocado",
+          "priceDelta": 1.5
+        },
+        {
+          "id": "t_bacon",
+          "name": "Beef bacon",
+          "priceDelta": 1.5
+        }
+      ]
+    },
+    "sauces_add": {
+      "id": "sauces_add",
+      "name": "Add sauces",
+      "required": false,
+      "min": 0,
+      "max": 6,
+      "options": [
+        {
+          "id": "s_ketchup",
+          "name": "Ketchup",
+          "priceDelta": 0
+        },
+        {
+          "id": "s_mustard",
+          "name": "Mustard",
+          "priceDelta": 0
+        },
+        {
+          "id": "s_mayo",
+          "name": "Mayo",
+          "priceDelta": 0
+        },
+        {
+          "id": "s_og",
+          "name": "OG House",
+          "priceDelta": 0
+        },
+        {
+          "id": "s_jranch",
+          "name": "Jalape\u00f1o Ranch",
+          "priceDelta": 0
+        },
+        {
+          "id": "s_bbq",
+          "name": "BBQ",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "sauce_pick": {
+      "id": "sauce_pick",
+      "name": "Choice of sauce",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "options": [
+        {
+          "id": "sp_ketchup",
+          "name": "Ketchup",
+          "priceDelta": 0
+        },
+        {
+          "id": "sp_mustard",
+          "name": "Mustard",
+          "priceDelta": 0
+        },
+        {
+          "id": "sp_mayo",
+          "name": "Mayo",
+          "priceDelta": 0
+        },
+        {
+          "id": "sp_og",
+          "name": "OG House",
+          "priceDelta": 0
+        },
+        {
+          "id": "sp_jranch",
+          "name": "Jalape\u00f1o Ranch",
+          "priceDelta": 0
+        },
+        {
+          "id": "sp_bbq",
+          "name": "BBQ",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "byo_build": {
+      "id": "byo_build",
+      "name": "Build it",
+      "required": false,
+      "min": 0,
+      "max": 15,
+      "options": [
+        {
+          "id": "b_cheese",
+          "name": "American cheese",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_lettuce",
+          "name": "Lettuce",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_pickles",
+          "name": "Pickles",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_tomatoes",
+          "name": "Tomatoes",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_cucumbers",
+          "name": "Cucumbers",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_onions",
+          "name": "Sliced onions",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_jalapenos",
+          "name": "Jalape\u00f1os",
+          "priceDelta": 0
+        },
+        {
+          "id": "b_egg",
+          "name": "Fried egg",
+          "priceDelta": 1.5
+        },
+        {
+          "id": "b_avocado",
+          "name": "Avocado",
+          "priceDelta": 1.5
+        },
+        {
+          "id": "b_bacon",
+          "name": "Beef bacon",
+          "priceDelta": 1.5
+        }
+      ]
+    },
+    "rm_og": {
+      "id": "rm_og",
+      "name": "Remove",
+      "required": false,
+      "min": 0,
+      "max": 5,
+      "options": [
+        {
+          "id": "r_og_ketchup",
+          "name": "No ketchup",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_og_mustard",
+          "name": "No mustard",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_og_onion",
+          "name": "No sliced onion",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_og_pickles",
+          "name": "No pickles",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_og_cheese",
+          "name": "No American cheese",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "rm_wake": {
+      "id": "rm_wake",
+      "name": "Remove",
+      "required": false,
+      "min": 0,
+      "max": 7,
+      "options": [
+        {
+          "id": "r_wk_og",
+          "name": "No OG sauce",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_wk_lettuce",
+          "name": "No lettuce",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_wk_pickles",
+          "name": "No pickles",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_wk_tomatoes",
+          "name": "No tomatoes",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_wk_cucumber",
+          "name": "No cucumber",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_wk_avocado",
+          "name": "No avocado",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_wk_cheese",
+          "name": "No American cheese",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "rm_lone": {
+      "id": "rm_lone",
+      "name": "Remove",
+      "required": false,
+      "min": 0,
+      "max": 5,
+      "options": [
+        {
+          "id": "r_ls_sauce",
+          "name": "No jalape\u00f1o ranch",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_ls_lettuce",
+          "name": "No lettuce",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_ls_onions",
+          "name": "No sliced onions",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_ls_jalapenos",
+          "name": "No jalape\u00f1os",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_ls_cheese",
+          "name": "No American cheese",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "rm_bbq": {
+      "id": "rm_bbq",
+      "name": "Remove",
+      "required": false,
+      "min": 0,
+      "max": 5,
+      "options": [
+        {
+          "id": "r_bb_sauce",
+          "name": "No BBQ sauce",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_bb_bacon",
+          "name": "No beef bacon",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_bb_onions",
+          "name": "No sliced onions",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_bb_pickles",
+          "name": "No pickles",
+          "priceDelta": 0
+        },
+        {
+          "id": "r_bb_cheese",
+          "name": "No American cheese",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "wing_count": {
+      "id": "wing_count",
+      "name": "How many",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "options": [
+        {
+          "id": "w_4",
+          "name": "4 piece",
+          "priceDelta": 0
+        },
+        {
+          "id": "w_6",
+          "name": "6 piece",
+          "priceDelta": 3
+        },
+        {
+          "id": "w_8",
+          "name": "8 piece",
+          "priceDelta": 6
+        },
+        {
+          "id": "w_10",
+          "name": "10 piece",
+          "priceDelta": 9
+        }
+      ]
+    },
+    "wing_flavor": {
+      "id": "wing_flavor",
+      "name": "Flavor",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "options": [
+        {
+          "id": "wf_dry_bbq",
+          "name": "Dry rub \u2014 BBQ",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_dry_cajun",
+          "name": "Dry rub \u2014 Cajun",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_dry_texas",
+          "name": "Dry rub \u2014 Texas Heat",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_dry_lemon",
+          "name": "Dry rub \u2014 Lemon Pepper",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_dry_garlic",
+          "name": "Dry rub \u2014 Garlic Parmesan",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_wet_bbq",
+          "name": "Wet rub \u2014 BBQ",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_wet_og",
+          "name": "Wet rub \u2014 OG House",
+          "priceDelta": 0
+        },
+        {
+          "id": "wf_wet_jranch",
+          "name": "Wet rub \u2014 Jalape\u00f1o Ranch",
+          "priceDelta": 0
+        }
+      ]
+    },
+    "drink_pick": {
+      "id": "drink_pick",
+      "name": "Which one",
+      "required": true,
+      "min": 1,
+      "max": 1,
+      "options": [
+        {
+          "id": "d_coke",
+          "name": "Coke",
+          "priceDelta": 0
+        },
+        {
+          "id": "d_diet",
+          "name": "Diet Coke",
+          "priceDelta": 0
+        },
+        {
+          "id": "d_sprite",
+          "name": "Sprite",
+          "priceDelta": 0
+        },
+        {
+          "id": "d_fanta",
+          "name": "Fanta",
+          "priceDelta": 0
+        },
+        {
+          "id": "d_drpepper",
+          "name": "Dr Pepper",
+          "priceDelta": 0
+        }
+      ]
+    }
+  },
+  "items": [
+    {
+      "id": "og",
+      "categoryId": "burgers",
+      "name": "The OG",
+      "description": "Ketchup, mustard, sliced onion, pickles, American cheese",
+      "price": 9,
+      "imageUrl": null,
+      "modifierGroups": [
+        "patty",
+        "toppings_add",
+        "sauces_add",
+        "rm_og"
+      ],
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": "wake_n_smash",
+      "categoryId": "burgers",
+      "name": "Wake N Smash",
+      "description": "OG sauce, lettuce, pickles, tomatoes, cucumber, avocado, American cheese",
+      "price": 10,
+      "imageUrl": null,
+      "modifierGroups": [
+        "patty",
+        "toppings_add",
+        "sauces_add",
+        "rm_wake"
+      ],
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": "lone_star_heat",
+      "categoryId": "burgers",
+      "name": "Lone Star Heat \ud83c\udf36",
+      "description": "Jalape\u00f1o ranch sauce, lettuce, sliced onions, jalape\u00f1os, American cheese",
+      "price": 9,
+      "imageUrl": null,
+      "modifierGroups": [
+        "patty",
+        "toppings_add",
+        "sauces_add",
+        "rm_lone"
+      ],
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": "bbq_bacon",
+      "categoryId": "burgers",
+      "name": "BBQ Bacon",
+      "description": "BBQ sauce, beef bacon, sliced onions, pickles, American cheese",
+      "price": 10,
+      "imageUrl": null,
+      "modifierGroups": [
+        "patty",
+        "toppings_add",
+        "sauces_add",
+        "rm_bbq"
+      ],
+      "available": true
+    },
+    {
+      "id": "build_your_own",
+      "categoryId": "burgers",
+      "name": "Build Your Own",
+      "description": "Start with the patty, add what you want",
+      "price": 9,
+      "imageUrl": null,
+      "modifierGroups": [
+        "patty",
+        "byo_build",
+        "sauces_add"
+      ],
+      "available": true
+    },
+    {
+      "id": "wings",
+      "categoryId": "wings",
+      "name": "Wings",
+      "description": "Dry rub or wet rub",
+      "price": 8,
+      "imageUrl": null,
+      "modifierGroups": [
+        "wing_count",
+        "wing_flavor"
+      ],
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": "smash_fries",
+      "categoryId": "fries",
+      "name": "Smash Fries",
+      "description": "Seasoned fries, smash patty, choice of sauce & toppings",
+      "price": 8,
+      "imageUrl": null,
+      "modifierGroups": [
+        "patty",
+        "sauce_pick",
+        "toppings_add"
+      ],
+      "featured": true,
+      "available": true
+    },
+    {
+      "id": "seasoned_fries",
+      "categoryId": "fries",
+      "name": "Seasoned Fries",
+      "description": "House seasoned fries",
+      "price": 5,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "available": true
+    },
+    {
+      "id": "can_drink",
+      "categoryId": "beverages",
+      "name": "Can Drink",
+      "description": "",
+      "price": 2,
+      "imageUrl": null,
+      "modifierGroups": [
+        "drink_pick"
+      ],
+      "available": true
+    },
+    {
+      "id": "water",
+      "categoryId": "beverages",
+      "name": "Water",
+      "description": "",
+      "price": 1.5,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "available": true
+    }
+  ],
+  "rewards": [
+    {
+      "id": "rw_drink",
+      "name": "Free Can Drink",
+      "pointsCost": 200,
+      "imageUrl": null,
+      "menuItemId": "can_drink"
+    },
+    {
+      "id": "rw_sfries",
+      "name": "Free Seasoned Fries",
+      "pointsCost": 500,
+      "imageUrl": null,
+      "menuItemId": "seasoned_fries"
+    },
+    {
+      "id": "rw_wings",
+      "name": "Free Wings",
+      "pointsCost": 800,
+      "imageUrl": null,
+      "menuItemId": "wings"
+    },
+    {
+      "id": "rw_og",
+      "name": "Free The OG",
+      "pointsCost": 900,
+      "imageUrl": null,
+      "menuItemId": "og"
+    }
+  ]
+}

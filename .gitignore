@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# expo / build
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+expo-env.d.ts
+
+# native
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# the printed menu is 62MB of scanned artwork; it is reference, not source.
+# Keep a copy outside the repo — assets/brand/menu.png is the readable version.
+assets/brand/Menu.pdf
+
+# os / editor
+.DS_Store
+*.log
+.idea/
+.vscode/

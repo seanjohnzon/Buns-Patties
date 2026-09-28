@@ -1,0 +1,7 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/item/:id", "destination": "/item/[id].html" },
+    { "source": "/order/:id", "destination": "/order/[id].html" }
+  ]
+}
