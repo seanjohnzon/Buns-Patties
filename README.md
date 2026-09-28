@@ -1,6 +1,16 @@
 # Buns & Patties app
 
-Halal smash burger truck in Houston ([@buns.patties](https://www.instagram.com/buns.patties)). Built on the "The Burger Truck" (Owner.com) model: QR on the truck → app → order ahead → pay → earn points → redeem free food. Plus a staff mode (kitchen board + scan-to-earn for walk-ups) so the truck doesn't need a second system.
+Ordering and rewards for a halal smash burger truck in Houston
+([@buns.patties](https://www.instagram.com/buns.patties)). **Soft launch 2 October.**
+
+A printed QR on the truck gets people into the app, where a free drink is waiting
+if they follow on Instagram or leave a review. After that they order ahead, pay,
+and pick up **by name** — nothing to show, nothing to scan. Staff get a kitchen
+board; the owner gets the takings, what is selling, and a tool for building his
+own giveaways.
+
+Runs on iOS, Android **and the web**. The web build is what makes the launch date
+possible: it takes payments with no app store involved.
 
 **Stack:** Expo (React Native, iOS + Android + web landing) · Supabase (auth, Postgres, realtime, edge functions) · Stripe (Apple Pay / Google Pay / cards). Running cost ≈ $0/mo + Stripe's 2.9% + 30¢.
 
@@ -49,8 +59,8 @@ on the owner dashboard a lie.
 npm run verify
 ```
 
-That is Gate 0 — typecheck plus 47 tests over pricing, rewards rules, menu integrity,
-owner reporting and phone normalisation (see [tests/README.md](tests/README.md)).
+That is Gate 0 — typecheck plus 70 tests over pricing, rewards rules, menu integrity,
+owner reporting, availability, feedback and phone normalisation (see [tests/README.md](tests/README.md)).
 Gate 1 is sandbox smoke, Gate 2 is SIT, and Gate 3 is a scripted three-phone
 end-to-end run on SIT. All hands-on gates live in the QA checklist:
 https://claude.ai/artifact/JwhQiypwXDu3x59euqpnGE
@@ -76,15 +86,16 @@ rejected for exactly that.
 | `item/[id]` | Modifiers (required single / optional multi), qty, note | Toast/Owner item sheet |
 | `cart` | Pickup ASAP/scheduled, tip %, apply points, Pay (Stripe PaymentSheet) | reference screenshot 2 |
 | `order/[id]` | Received → Cooking → Ready, live via realtime | BurgerFi order tracking |
-| `(tabs)/rewards` | Welcome offer gated on follow-or-review, progress in money, reward list | |
+| `(tabs)/rewards` | Live offers, then progress to the next free thing in money | |
 | `(tabs)/orders` | History + reorder entry point | |
 | `(tabs)/account` | Phone OTP sign-in, staff links | |
-| `staff/index` | Kitchen board — tap to advance status | (Owner charges for this) |
+| `staff/index` | Kitchen board — orders called out by name, plus a red banner for anything paid but not cooking | (Owner charges for this) |
 | `owner/index` | Takings today vs last week, orders, average order, tips kept separate, what's selling, rewards liability | Toast Now |
 | `owner/campaigns` | Build an offer, cap it, see what it cost | |
 | `owner/people` | Who is staff / owner — a role on a normal phone login, no second admin password | Square, Toast |
 | `owner/menu` | Mark an item sold out; it disappears for customers at once | |
-| `qr` | Web landing the truck QR points at → store links | |
+| `feedback` / `owner/feedback` | Customers tell the owner what was wrong; he works the list |  |
+| `qr` | Landing the truck QR points at | |
 
 ## Rewards and offers
 
@@ -251,9 +262,16 @@ screen after pickup, and can also reach it from Account. It lands on the owner's
 **What people are saying** screen, unhandled and lowest-rated first, tagged with the
 build it came from so "it broke" traces to a version.
 
+## Deploying
+
+See [DEPLOY.md](DEPLOY.md). The one that bites: Expo Router exports dynamic routes
+as literal `[id]` files, so `/order/<id>` — where Stripe returns customers after
+paying — 404s without a host rewrite. `vercel.json`, `netlify.toml` and
+`public/_redirects` all carry it. **Test `/order/anything` before launch.**
+
 ## Not built yet (deliberately)
 
-- Delivery (truck = pickup only)
+- Delivery (a truck is pickup only)
+- Web push (needs a service worker and a VAPID key; the order screen updates live anyway)
 - Scheduled pickup date picker (currently ASAP or +30 min placeholder)
-- Push token registration (`expo-notifications` is installed; ~15 lines in `account.tsx` to save the token to `profiles.expo_push_token`)
 - Admin menu editor (edit in Supabase dashboard for now)

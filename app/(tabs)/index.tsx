@@ -22,10 +22,10 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
-    getTruckStatus().then(setStatus);
-    getMenu().then(({ items }) => setFeatured(items.filter((i) => i.featured && !isSoldOut(i))));
-    getRewards().then(setRewards);
-    getProfile().then(setProfile);
+    getTruckStatus().then(setStatus).catch(() => {});
+    getMenu().then(({ items }) => setFeatured(items.filter((i) => i.featured && !isSoldOut(i)))).catch(() => {});
+    getRewards().then(setRewards).catch(() => {});
+    getProfile().then(setProfile).catch(() => {});
   }, []);
 
   const points = profile?.points ?? 0;

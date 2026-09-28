@@ -1,7 +1,8 @@
 // Menu — category pills on top, item rows below (reference app screen 3).
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { CartBar } from '@/components/CartBar';
+import { LoadFailed } from '@/components/LoadFailed';
 import { MenuItemRow } from '@/components/MenuItemRow';
 import { H2, Pill, Screen } from '@/components/ui';
 import { getMenu, isSoldOut } from '@/lib/api';
@@ -11,13 +12,20 @@ export default function Menu() {
   const [cats, setCats] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [active, setActive] = useState<string>('all');
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setFailed(false);
     // Anything staff have run out of simply is not on the menu today.
-    getMenu().then(({ categories, items }) => { setCats(categories); setItems(items.filter((i) => !isSoldOut(i))); });
+    getMenu()
+      .then(({ categories, items }) => { setCats(categories); setItems(items.filter((i) => !isSoldOut(i))); })
+      .catch(() => setFailed(true));
   }, []);
+  useEffect(load, [load]);
 
   const shown = useMemo(() => (active === 'all' ? items : items.filter((i) => i.categoryId === active)), [items, active]);
+
+  if (failed) return <LoadFailed what="menu" onRetry={load} />;
 
   return (
     <Screen>

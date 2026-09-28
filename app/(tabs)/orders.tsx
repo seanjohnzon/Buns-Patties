@@ -10,7 +10,7 @@ const LABEL: Record<Order['status'], string> = { pending_payment: 'Not paid', re
 
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
-  useFocusEffect(useCallback(() => { getMyOrders().then(setOrders); }, []));
+  useFocusEffect(useCallback(() => { getMyOrders().then(setOrders).catch(() => {}); }, []));
 
   return (
     <Screen>

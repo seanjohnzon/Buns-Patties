@@ -96,14 +96,33 @@ export async function getProfile(): Promise<Profile | null> {
   return data ? hydrateProfile(data) : null;
 }
 
+const DEMO_ORDERS: Order[] = [
+  {
+    id: 'demo-live', userId: 'demo', status: 'preparing',
+    subtotal: 24.5, tax: 0, tip: 3, discount: 0, total: 27.5, pointsEarned: 122,
+    pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 6 * 60000).toISOString(),
+    lines: [
+      { name: 'The OG', qty: 1, price: 12.5, mods: ['Double patty', 'Beef bacon'] },
+      { name: 'Smash Fries', qty: 1, price: 8, mods: ['Single patty', 'OG House'] },
+      { name: 'Can Drink', qty: 2, price: 2, mods: ['Coke'] },
+    ],
+  },
+  {
+    id: 'demo-done', userId: 'demo', status: 'completed',
+    subtotal: 24, tax: 0, tip: 0, discount: 0, total: 24, pointsEarned: 120,
+    pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 8 * 864e5).toISOString(),
+    lines: [{ name: 'BBQ Bacon', qty: 2, price: 12, mods: ['Double patty'] }],
+  },
+];
+
 export async function getMyOrders(): Promise<Order[]> {
-  if (!hasSupabase) return [];
+  if (!hasSupabase) return DEMO_ORDERS;
   const { data } = await supabase.from('orders').select('*, order_lines(*)').order('created_at', { ascending: false }).limit(30);
   return (data ?? []).map(mapOrder);
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
-  if (!hasSupabase) return null;
+  if (!hasSupabase) return DEMO_ORDERS.find((o) => o.id === id) ?? DEMO_ORDERS[0];
   const { data } = await supabase.from('orders').select('*, order_lines(*)').eq('id', id).single();
   return data ? mapOrder(data) : null;
 }
@@ -143,7 +162,7 @@ export async function createOrder(input: OrderInput): Promise<{ orderId: string;
 
 
 export async function staffListOrders(): Promise<Order[]> {
-  if (!hasSupabase) return [];
+  if (!hasSupabase) return DEMO_ORDERS.filter((o) => o.status !== 'completed');
   const { data } = await supabase.from('orders').select('*, order_lines(*)').in('status', ['received', 'preparing', 'ready']).order('created_at');
   return (data ?? []).map(mapOrder);
 }
