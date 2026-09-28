@@ -30,7 +30,7 @@ const BURST_GAP_MS = 900;
 
 export default function Home() {
   const [status, setStatus] = useState<TruckStatus | null>(null);
-  const { width } = useWindowDimensions();
+  const { width, height: screenH } = useWindowDimensions();
   const logo = Math.min(width - 40, 320);
   const heroH = logo + 8;
 
@@ -172,17 +172,17 @@ export default function Home() {
         </View>
       </Animated.ScrollView>
 
-      <FryBurstLayer trigger={burst} width={width} height={heroH} />
+      <FryBurstLayer trigger={burst} width={width} height={screenH} originY={(heroH * 0.66) / screenH} />
       <CartBar />
     </Screen>
   );
 }
 
-/** The fries fly over everything, including the cards below the logo. */
-function FryBurstLayer({ trigger, width, height }: { trigger: number; width: number; height: number }) {
+/** The fries scatter over the whole screen, not just the logo. */
+function FryBurstLayer({ trigger, width, height, originY }: { trigger: number; width: number; height: number; originY: number }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 10 }]}>
-      <FryBurst trigger={trigger} width={width} height={height} originY={0.66} />
+      <FryBurst trigger={trigger} width={width} height={height} originY={originY} />
     </View>
   );
 }

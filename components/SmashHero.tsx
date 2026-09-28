@@ -6,17 +6,17 @@
 //   progress 0     the logo exactly as printed
 //   progress 1     slammed: burger squashed and spread
 //
-// The juice that squirts out on impact is not tied to progress — it is a burst
-// with its own physics, fired each time `burst` goes up. Tying it to progress
-// would suck the juice back into the burger when the press lifts.
+// The juice is drawn the way the logo draws its own: red, dark outline, thick
+// drips with round ends. It wells out of the patty edges as the press comes
+// down, and runs down the bun on impact (`burst`), then settles.
 import { Image } from 'expo-image';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  Easing, Extrapolation, interpolate, useAnimatedStyle, useSharedValue,
+  Easing, Extrapolation, interpolate, useAnimatedProps, useAnimatedStyle, useSharedValue,
   withDelay, withSequence, withSpring, withTiming, type SharedValue,
 } from 'react-native-reanimated';
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 
 const BADGE = require('@/assets/brand/layers/badge.png');
 const PRESS = require('@/assets/brand/layers/press.png');
@@ -80,7 +80,7 @@ export function SmashHero({ progress, size = 240, burst = 0 }: { progress: Share
       <Animated.View style={[box(PRESS_BOX, size), pressStyle]}>
         <Image source={PRESS} style={StyleSheet.absoluteFill} contentFit="fill" />
       </Animated.View>
-      <JuiceBurst size={size} burst={burst} />
+      <Juice progress={progress} size={size} burst={burst} />
     </View>
   );
 }
@@ -101,98 +101,146 @@ function squashed(fx: number, fy: number, p: number, size: number) {
   };
 }
 
+
 // ---------------------------------------------------------------------------
-// The squirt. Droplets leave both sides of the patties on impact, fly out, arc
-// under gravity and stretch along the way they are travelling. Fired and
-// forgotten: each `burst` is a fresh throw with new random numbers.
+// Juice. Two things, both in the logo's own style (red fill, dark outline, a
+// white highlight):
+//   WELLS — liquid bulging out of each patty's edge, sized by how hard the press
+//           is down. Scrolling squeezes it out and lets it back in.
+//   DRIPS — on impact, juice runs down from the patty edges: a stem that grows,
+//           a round bead at the end, and a drop that lets go and falls. Each
+//           has its own timing, and they fade once they have run their course.
 
-const JUICE = { light: '#FFD27A', mid: '#E9A23B', dark: '#A8581A', shine: 'rgba(255,255,255,0.85)' };
-const DROPS = 14;
-const JUICE_MS = 950;
+const JUICE = { fill: '#D02028', shine: 'rgba(255,255,255,0.75)', line: '#482010' };
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const JUICE_MS = 2200;
 
-type Throw = { x: number; y: number; vx: number; vy: number; r: number; delay: number };
+/** Where on the burger juice comes from: the two patty layers, both edges. */
+const WELLS = [
+  { side: 'left' as const, y: PATTY_Y[0] }, { side: 'right' as const, y: PATTY_Y[0] },
+  { side: 'left' as const, y: PATTY_Y[1] }, { side: 'right' as const, y: PATTY_Y[1] },
+];
 
-function JuiceBurst({ size, burst }: { size: number; burst: number }) {
+type DripSpec = { x: number; y: number; len: number; w: number; delay: number; speed: number; drop: boolean };
+/** x/y as fractions of the logo; len as a fraction of the logo height. */
+// Short and fat, like the ones drawn on the logo: they run over the bottom bun, not past it.
+const DRIPS: DripSpec[] = [
+  { x: PATTY_EDGE.left + 0.018, y: PATTY_Y[0] + 0.014, len: 0.050, w: 0.034, delay: 0.00, speed: 1.0, drop: false },
+  { x: PATTY_EDGE.right - 0.016, y: PATTY_Y[0] + 0.014, len: 0.042, w: 0.030, delay: 0.07, speed: 0.9, drop: false },
+  { x: PATTY_EDGE.left + 0.030, y: PATTY_Y[1] + 0.016, len: 0.068, w: 0.038, delay: 0.03, speed: 0.85, drop: true },
+  { x: PATTY_EDGE.right - 0.026, y: PATTY_Y[1] + 0.016, len: 0.060, w: 0.036, delay: 0.10, speed: 0.9, drop: false },
+  { x: 0.445, y: PATTY_Y[1] + 0.018, len: 0.040, w: 0.028, delay: 0.16, speed: 1.1, drop: false },
+  { x: 0.565, y: PATTY_Y[1] + 0.018, len: 0.075, w: 0.034, delay: 0.12, speed: 0.95, drop: true },
+];
+
+function Juice({ progress, size, burst }: { progress: SharedValue<number>; size: number; burst: number }) {
   const t = useSharedValue(0);
-  const throws = useMemo<Throw[]>(() => {
-    const k = size / 240;
-    return Array.from({ length: DROPS }, (_, i) => {
-      const left = i % 2 === 0;
-      const fy = PATTY_Y[i % 4 < 2 ? 0 : 1] + (Math.random() - 0.5) * 0.02;
-      // Launch from where the patty edge is when the burger is fully squashed.
-      const edge = squashed(left ? PATTY_EDGE.left : PATTY_EDGE.right, fy, 1, size);
-      return {
-        x: edge.x, y: edge.y,
-        vx: (left ? -1 : 1) * (90 + Math.random() * 190) * k,
-        vy: -(40 + Math.random() * 190) * k,
-        r: (3.5 + Math.random() * 5.5) * k,
-        delay: Math.random() * 0.12,
-      };
-    });
-    // A new throw every burst.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [burst, size]);
-
   useEffect(() => {
     if (!burst) return;
     t.value = 0;
     t.value = withTiming(1, { duration: JUICE_MS, easing: Easing.linear });
   }, [burst, t]);
 
-  if (!burst) return null;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {throws.map((d, i) => <Drop key={`${burst}-${i}`} t={t} d={d} size={size} />)}
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {WELLS.map((w, i) => <Well key={i} progress={progress} t={t} size={size} {...w} />)}
+        {burst > 0 && DRIPS.map((d, i) => <Drip key={`${burst}-${i}`} progress={progress} t={t} size={size} spec={d} />)}
+      </Svg>
     </View>
   );
 }
 
-const G = 1100; // pt/s², at size 240
-
-function Drop({ t, d, size }: { t: SharedValue<number>; d: Throw; size: number }) {
-  const g = G * (size / 240);
-  const w = d.r * 2;
-  const h = d.r * 3;
-  const style = useAnimatedStyle(() => {
-    const local = Math.max(0, t.value - d.delay) / (1 - d.delay);
-    const s = local * (JUICE_MS / 1000);
-    const vy = d.vy + g * s;
-    const speed = Math.sqrt(d.vx * d.vx + vy * vy);
-    // Point the drop's tail back along its path, and stretch it with speed.
-    const angle = Math.atan2(vy, d.vx) * (180 / Math.PI) - 90;
-    const stretch = 1 + Math.min(0.9, speed / (500 * (size / 240)));
-    const pop = interpolate(local, [0, 0.08], [0.2, 1], Extrapolation.CLAMP);
-    return {
-      opacity: local <= 0 ? 0 : interpolate(local, [0, 0.05, 0.75, 1], [0, 1, 1, 0], Extrapolation.CLAMP),
-      transform: [
-        { translateX: d.x + d.vx * s - w / 2 },
-        { translateY: d.y + d.vy * s + 0.5 * g * s * s - h / 2 },
-        { rotate: `${angle}deg` },
-        { scaleY: stretch * pop },
-        { scaleX: pop / Math.sqrt(stretch) },
-      ],
-    };
+/** Liquid bulging out of a patty edge, sized by the press. */
+function Well({ progress, t, size, side, y }: { progress: SharedValue<number>; t: SharedValue<number>; size: number; side: 'left' | 'right'; y: number }) {
+  const props = useAnimatedProps(() => {
+    const p = progress.value;
+    // Squeezed out by the press; on impact it surges a little past that and settles.
+    const byPress = interpolate(p, [0.35, 1], [0, 1], Extrapolation.CLAMP);
+    const surge = interpolate(t.value, [0, 0.08, 0.5, 1], [0, 0.35, 0.1, 0], Extrapolation.CLAMP);
+    const amount = Math.min(1.2, byPress + surge);
+    const edge = squashed(side === 'left' ? PATTY_EDGE.left + 0.01 : PATTY_EDGE.right - 0.01, y, p, size);
+    const rx = size * 0.028 * amount;
+    const ry = size * 0.013 * (0.6 + 0.4 * amount);
+    return { cx: edge.x + (side === 'left' ? -rx * 0.4 : rx * 0.4), cy: edge.y, rx, ry, opacity: amount > 0.03 ? 1 : 0 };
+  });
+  const shine = useAnimatedProps(() => {
+    const p = progress.value;
+    const amount = Math.min(1.2, interpolate(p, [0.35, 1], [0, 1], Extrapolation.CLAMP) + interpolate(t.value, [0, 0.08, 0.5, 1], [0, 0.35, 0.1, 0], Extrapolation.CLAMP));
+    const edge = squashed(side === 'left' ? PATTY_EDGE.left + 0.01 : PATTY_EDGE.right - 0.01, y, p, size);
+    const rx = size * 0.028 * amount;
+    return { cx: edge.x + (side === 'left' ? -rx * 0.55 : rx * 0.25), cy: edge.y - size * 0.005, rx: rx * 0.3, ry: size * 0.0035, opacity: amount > 0.25 ? 1 : 0 };
   });
   return (
-    <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: w, height: h }, style]}>
-      <JuiceDrop w={w} h={h} />
-    </Animated.View>
+    <>
+      <AnimatedEllipse animatedProps={props} fill={JUICE.fill} stroke={JUICE.line} strokeWidth={size * 0.007} />
+      <AnimatedEllipse animatedProps={shine} fill={JUICE.shine} />
+    </>
   );
 }
 
-/** A glossy teardrop: round head at the bottom, tail at the top. */
-function JuiceDrop({ w, h }: { w: number; h: number }) {
+/** One run of juice: stem, bead, and the drop that lets go. */
+function Drip({ progress, t, size, spec }: { progress: SharedValue<number>; t: SharedValue<number>; size: number; spec: DripSpec }) {
+  const w = spec.w * size;          // where it leaves the patty
+  const full = spec.len * size;
+  const bead = w * 0.42;            // the round end
+  const g = 900 * (size / 240);
+
+  // 0..1 through this drip's own life, from its start until it fades.
+  const local = (tv: number) => {
+    'worklet';
+    return Math.max(0, Math.min(1, (tv - spec.delay) / (1 - spec.delay)));
+  };
+  const lengthAt = (l: number) => {
+    'worklet';
+    // Runs out fast, slows as it hangs; lets the drop go at 0.55 and shortens a touch.
+    const grow = interpolate(l, [0, 0.55 * spec.speed, 1], [0, 1, 0.82], Extrapolation.CLAMP);
+    return full * Easing.out(Easing.cubic)(Math.min(1, grow));
+  };
+
+  const stem = useAnimatedProps(() => {
+    const l = local(t.value);
+    const L = lengthAt(l);
+    const src = squashed(spec.x, spec.y, progress.value, size);
+    const x = src.x, y0 = src.y - w * 0.35;   // starts inside the patty
+    // Wide where it leaves the patty, narrowing to a neck, then the bead.
+    const rb = Math.min(bead, L * 0.4);
+    const neck = Math.max(1, rb * 1.1);
+    const yn = y0 + L - rb;
+    const d = `M${x - w / 2} ${y0}`
+      + ` C${x - w / 2} ${y0 + L * 0.35} ${x - neck / 2} ${y0 + L * 0.5} ${x - neck / 2} ${yn}`
+      + ` A${rb} ${rb} 0 1 0 ${x + neck / 2} ${yn}`
+      + ` C${x + neck / 2} ${y0 + L * 0.5} ${x + w / 2} ${y0 + L * 0.35} ${x + w / 2} ${y0} Z`;
+    return { d, opacity: l <= 0 ? 0 : interpolate(l, [0, 0.03, 0.82, 1], [0, 1, 1, 0], Extrapolation.CLAMP) };
+  });
+  const shine = useAnimatedProps(() => {
+    const l = local(t.value);
+    const L = lengthAt(l);
+    const src = squashed(spec.x, spec.y, progress.value, size);
+    const x = src.x - w * 0.16, y0 = src.y + w * 0.15;
+    return {
+      d: `M${x} ${y0} L${x + w * 0.04} ${y0 + Math.max(0, L * 0.5)}`,
+      opacity: l <= 0 ? 0 : interpolate(l, [0, 0.05, 0.82, 1], [0, 1, 1, 0], Extrapolation.CLAMP),
+    };
+  });
+  const drop = useAnimatedProps(() => {
+    const l = local(t.value);
+    const since = Math.max(0, l - 0.55) * (JUICE_MS / 1000) * (1 - spec.delay);
+    const src = squashed(spec.x, spec.y, progress.value, size);
+    const y = src.y + full + bead + 0.5 * g * since * since;
+    return {
+      cx: src.x, cy: y, r: bead * 0.7,
+      opacity: !spec.drop || l < 0.55 ? 0 : interpolate(since, [0, 0.04, 0.3, 0.45], [0, 1, 1, 0], Extrapolation.CLAMP),
+    };
+  });
+
   return (
-    <Svg width={w} height={h} viewBox="0 0 20 30">
-      <Defs>
-        <LinearGradient id="j" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={JUICE.light} />
-          <Stop offset="0.55" stopColor={JUICE.mid} />
-          <Stop offset="1" stopColor={JUICE.dark} />
-        </LinearGradient>
-      </Defs>
-      <Path d="M10 0 C10 0 1 13 1 20 A9 9 0 0 0 19 20 C19 13 10 0 10 0 Z" fill="url(#j)" />
-      <Circle cx="7" cy="19" r="2.6" fill={JUICE.shine} />
-    </Svg>
+    <>
+      <AnimatedPath animatedProps={stem} fill={JUICE.fill} stroke={JUICE.line} strokeWidth={size * 0.007} strokeLinejoin="round" />
+      <AnimatedPath animatedProps={shine} stroke={JUICE.shine} strokeWidth={w * 0.16} strokeLinecap="round" fill="none" />
+      <AnimatedCircle animatedProps={drop} fill={JUICE.fill} stroke={JUICE.line} strokeWidth={size * 0.007} />
+    </>
   );
 }
