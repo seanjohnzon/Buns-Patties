@@ -21,6 +21,15 @@ Deno.serve(async (req) => {
   const built = await buildOrder(sb, user.id, await req.json());
   if ('error' in built) return json({ error: built.error }, built.status);
 
+  // A $0 order (the free drink on its own) never touches Stripe — Stripe will
+  // not take a charge under 50 cents, and there is nothing to charge. The total
+  // was worked out here from verified entitlements, so it is safe to open it
+  // straight onto the kitchen board.
+  if (built.total === 0) {
+    await sb.from('orders').update({ status: 'received' }).eq('id', built.orderId).eq('status', 'pending_payment');
+    return json({ orderId: built.orderId, free: true });
+  }
+
   const ephemeralKey = await stripe.ephemeralKeys.create(
     { customer: built.customerId }, { apiVersion: '2024-12-18.acacia' },
   );

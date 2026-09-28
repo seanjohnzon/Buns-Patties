@@ -87,3 +87,19 @@ test('money never drifts into float dust', () => {
   assert.equal(t.subtotal, 0.3);        // not 0.30000000000000004
   assert.equal(round2(1.005), 1.01);
 });
+
+test('the free drink on its own totals exactly zero, so it skips Stripe', () => {
+  // Stripe refuses charges under 50 cents. A claimed freebie must come to $0.00
+  // exactly — not a few cents of tax — or it can never be collected.
+  const t = cartTotals([line(0)], 0, 0);
+  assert.equal(t.subtotal, 0);
+  assert.equal(t.tax, 0);
+  assert.equal(t.total, 0);
+});
+
+test('anything actually paid for clears Stripe\'s 50-cent minimum', () => {
+  // The cheapest paid item is a $1.50 water; with tax it can never land in the
+  // dead zone between $0 and $0.50 that Stripe rejects.
+  const t = cartTotals([line(1.5)], 0, 0);
+  assert.ok(t.total >= 0.5, `cheapest order is $${t.total}`);
+});

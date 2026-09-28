@@ -15,10 +15,10 @@ it.
 | Database (Supabase) | **Us** | — | We operate it. One project per environment. |
 | Text messages (Twilio) | **Us** | — | Ours, pooled across clients. |
 | Web hosting / EAS | **Us** | — | Ours. |
-| **Stripe** | **Client** | They complete a hosted onboarding link; payouts go to their bank, never through us | It is their money and their tax liability |
-| **Apple Developer** | **Client** | They invite us into App Store Connect as **App Manager** | Apple forbids publishing a client's app under an agency licence — the account holder must be able to bind the business legally |
-| **Google Play** | **Client** | They invite us in Play Console under Users and permissions | Same, and an Organization account skips the 12-tester rule |
-| **Google Business Profile** | **Client** | They add us as a **Manager** | It is their listing and their reviews |
+| **Stripe** | **Client** | They sign up at dashboard.stripe.com/register, then Settings → Team → Add member → our email, role **Developer**. We create our own restricted keys. Payouts go to their bank, never through us | It is their money and their tax liability |
+| **Apple Developer** | **Client** | They invite us into App Store Connect as **App Manager** with **Access to Certificates, Identifiers & Profiles** ticked — without it EAS cannot generate signing credentials | Apple forbids publishing a client's app under an agency licence — the account holder must be able to bind the business legally |
+| **Google Play** | **Client** | Play Console → Users and permissions → Invite new users → our email, **Admin (all permissions)** | Same, and an Organization account skips the 12-tester rule |
+| **Google Business Profile** | **Client** | Business Profile settings → People and access → Add → our email, **Manager** | It is their listing and their reviews |
 
 Nobody sends a password. Every client-owned account ends with *them adding us
 from inside*, and they can remove us at any time without anything breaking.
@@ -26,7 +26,9 @@ from inside*, and they can remove us at any time without anything breaking.
 ### Stripe: two models
 
 - **Now, one client:** their own Stripe account, we are invited as a team member
-  and create our own restricted API keys. Simplest, and the money never touches us.
+  (role Developer — can create keys and webhooks, cannot touch payouts or the
+  team) and create our own restricted API keys. Invites expire after 10 days.
+  Simplest, and the money never touches us.
 - **Later, many clients:** Stripe **Connect** — we hold the platform account and
   each business onboards as a connected account through Stripe's hosted flow.
   This is what Owner.com, Toast and Square all do. Worth moving to at the point
@@ -61,6 +63,14 @@ credentials, and the app is listed under their business name, as Apple requires.
 
 Three separate Supabase projects. SIT's seeded orders must never appear in the
 takings the owner reads.
+
+## Orders that cost nothing
+
+A claimed freebie on its own totals exactly $0.00. Stripe refuses any charge under
+50 cents, so both checkout functions open a $0 order straight onto the kitchen
+board without touching Stripe. Safe because the total is computed server-side
+from verified entitlements — a phone cannot talk its way to $0. Anything actually
+paid for clears the minimum (cheapest item $1.50 + tax), and both are tested.
 
 ## Secrets
 

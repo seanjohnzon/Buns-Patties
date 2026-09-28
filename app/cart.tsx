@@ -54,17 +54,20 @@ export default function Cart() {
       // Web has no native payment sheet, so Stripe hosts the payment page and
       // sends them back to the order screen. Same order, same rules, same webhook.
       if (Platform.OS === 'web') {
-        const { checkoutUrl } = await createCheckoutSession(payload);
+        const res = await createCheckoutSession(payload);
         clear();
-        await Linking.openURL(checkoutUrl);
+        // Nothing to pay (the free drink on its own) — straight to the order.
+        if (res.free || !res.checkoutUrl) { router.replace({ pathname: '/order/[id]', params: { id: res.orderId } }); return; }
+        await Linking.openURL(res.checkoutUrl);
         return;
       }
 
-      if (!stripe) { Alert.alert('Payments unavailable', 'This build cannot take card payments.'); return; }
       const res = await createOrder(payload);
+      if (res.free) { clear(); router.replace({ pathname: '/order/[id]', params: { id: res.orderId } }); return; }
+      if (!stripe) { Alert.alert('Payments unavailable', 'This build cannot take card payments.'); return; }
       const init = await stripe.initPaymentSheet({
         merchantDisplayName: 'Buns & Patties',
-        paymentIntentClientSecret: res.paymentIntentClientSecret,
+        paymentIntentClientSecret: res.paymentIntentClientSecret!,
         customerId: res.customerId, customerEphemeralKeySecret: res.ephemeralKey,
         applePay: { merchantCountryCode: 'US' },
         googlePay: { merchantCountryCode: 'US', testEnv: true },
@@ -140,7 +143,7 @@ export default function Cart() {
       <View style={s.footer}>
         {open === false && <Muted style={{ textAlign: 'center', marginBottom: 8 }}>The truck is closed right now.</Muted>}
         <Button
-          title={open === false ? 'Closed right now' : busy ? 'Processing…' : `Pay ${money(t.total)}`}
+          title={open === false ? 'Closed right now' : busy ? 'Processing…' : t.total === 0 ? 'Place order — nothing to pay' : `Pay ${money(t.total)}`}
           disabled={busy || open === false}
           onPress={pay}
         />

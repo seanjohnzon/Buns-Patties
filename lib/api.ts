@@ -137,7 +137,7 @@ export function subscribeOrder(id: string, cb: (o: Order) => void) {
 }
 
 /** Web: builds the order and returns a Stripe-hosted page to send them to. */
-export async function createCheckoutSession(input: OrderInput): Promise<{ orderId: string; checkoutUrl: string }> {
+export async function createCheckoutSession(input: OrderInput): Promise<{ orderId: string; checkoutUrl?: string; free?: boolean }> {
   if (!hasSupabase) throw new Error('Supabase not configured — see README');
   const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: input });
   if (error) throw error;
@@ -153,7 +153,7 @@ export type OrderInput = {
   pickupName?: string;
 };
 
-export async function createOrder(input: OrderInput): Promise<{ orderId: string; paymentIntentClientSecret: string; customerId?: string; ephemeralKey?: string }> {
+export async function createOrder(input: OrderInput): Promise<{ orderId: string; paymentIntentClientSecret?: string; customerId?: string; ephemeralKey?: string; free?: boolean }> {
   if (!hasSupabase) throw new Error('Supabase not configured — set EXPO_PUBLIC_SUPABASE_URL / ANON_KEY');
   const { data, error } = await supabase.functions.invoke('create-payment-intent', { body: input });
   if (error) throw error;
