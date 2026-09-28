@@ -8,6 +8,7 @@ import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } fro
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
 import { createCheckoutSession, createOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
 import { cartTotals, lineTotal, useCart } from '@/lib/cart';
+import { checkoutBlock } from '@/lib/availability';
 import { pointsForOrder } from '@/lib/points';
 import { hasSupabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
@@ -19,6 +20,7 @@ export default function Cart() {
   const [points, setPoints] = useState(0);
   const [pickupName, setPickupName] = useState('');
   const [open, setOpen] = useState<boolean | null>(null);
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const stripe = useStripe();
@@ -26,14 +28,15 @@ export default function Cart() {
   useEffect(() => {
     getProfile().then((p) => { setPoints(p?.points ?? 0); if (p?.name) setPickupName(p.name); }).catch(() => {});
     // Re-checked every time the cart opens: the truck may have shut since.
-    getTruckStatus().then((s) => setOpen(s.isOpen)).catch(() => setOpen(null));
+    getTruckStatus().then((s) => { setOpen(s.isOpen); setPaymentsEnabled(s.paymentsEnabled ?? false); }).catch(() => setOpen(null));
   }, []);
 
   const t = cartTotals(lines, tip, redeemPoints);
+  const gate = checkoutBlock({ open, paymentsEnabled, total: t.total, name: pickupName });
 
   async function pay() {
-    if (open === false) { Alert.alert('Closed right now', 'The truck is shut. Your order is saved — come back when it opens.'); return; }
-    if (!pickupName.trim()) { Alert.alert('Almost there', 'Add a name so we can call your order out.'); return; }
+    const block = checkoutBlock({ open, paymentsEnabled, total: t.total, name: pickupName });
+    if (block.blocked) { Alert.alert(block.reason === 'closed' ? 'Closed right now' : 'Almost there', block.message); return; }
     if (!hasSupabase) { Alert.alert('Demo mode', 'Connect Supabase + Stripe to take real payments (see README).'); return; }
 
     // No prices are sent: the server looks up every one and decides for itself
@@ -141,10 +144,12 @@ export default function Cart() {
         </View>
       </ScrollView>
       <View style={s.footer}>
-        {open === false && <Muted style={{ textAlign: 'center', marginBottom: 8 }}>The truck is closed right now.</Muted>}
+        {gate.blocked && gate.reason !== 'no_name' && <Muted style={{ textAlign: 'center', marginBottom: 8 }}>{gate.message}</Muted>}
         <Button
-          title={open === false ? 'Closed right now' : busy ? 'Processing…' : t.total === 0 ? 'Place order — nothing to pay' : `Pay ${money(t.total)}`}
-          disabled={busy || open === false}
+          title={gate.blocked && gate.reason === 'closed' ? 'Closed right now'
+            : gate.blocked && gate.reason === 'payments_off' ? 'Pay at the window for now'
+            : busy ? 'Processing…' : t.total === 0 ? 'Place order — nothing to pay' : `Pay ${money(t.total)}`}
+          disabled={busy || (gate.blocked && gate.reason !== 'no_name')}
           onPress={pay}
         />
       </View>

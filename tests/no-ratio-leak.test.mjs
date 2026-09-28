@@ -14,6 +14,10 @@ const CUSTOMER_SCREENS = [
   'app/qr.tsx',
   'app/order/[id].tsx',
   'components/PointsCard.tsx',
+  'app/auth.tsx',
+  'app/(tabs)/account.tsx',
+  'app/feedback.tsx',
+  'app/item/[id].tsx',
 ];
 
 // Pull out the strings a customer could actually read. This is a rough parse,
@@ -28,7 +32,7 @@ function visibleText(src) {
 
   const candidates = [];
   // JSX text nodes
-  for (const m of withoutComments.matchAll(/>([^<>{}]{3,})</g)) candidates.push(m[1]);
+  for (const m of withoutComments.matchAll(/>([^<>]{3,})</g)) candidates.push(m[1].replace(/\{[^{}]*\}/g, ' '));
   // copy passed as a prop
   for (const m of withoutComments.matchAll(/(?:title|placeholder|label|blurb)=\{?["'`]([^"'`]+)["'`]/g)) candidates.push(m[1]);
   // template literals, with ${...} stripped — those hold identifiers, not prose
@@ -42,7 +46,7 @@ function visibleText(src) {
 }
 
 test('no customer screen mentions points, a rate, or a percentage', () => {
-  const banned = [' pts', 'points', 'per $1', 'per dollar', '% back', 'redeem rate'];
+  const banned = [' pts', 'points', 'per $1', 'per dollar', '% back', 'redeem rate', 'just for joining'];
   for (const file of CUSTOMER_SCREENS) {
     const text = visibleText(readFileSync(file, 'utf8'));
     for (const word of banned) {

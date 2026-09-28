@@ -28,7 +28,7 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
 
   // A shut truck takes no money. Checked here, not just on the phone, so an app
   // left open since lunchtime cannot put an order through at midnight.
-  const { data: truck } = await sb.from('truck_status').select('is_open').eq('id', 1).maybeSingle();
+  const { data: truck } = await sb.from('truck_status').select('is_open, payments_enabled').eq('id', 1).maybeSingle();
   if (!truck?.is_open) return { error: 'The truck is closed right now.', status: 409 };
 
   const { data: items } = await sb.from('menu_items')
@@ -100,6 +100,10 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
   const tip = Math.max(0, round2(Number(body.tip) || 0));
   const total = round2(subtotal + tax + tip);
   if (total < 0) return { error: 'bad total', status: 400 };
+  // Until Stripe approves the owner, only $0 orders (the free drink) go through.
+  if (total > 0 && !truck?.payments_enabled) {
+    return { error: 'Card payments are not switched on yet. Please pay at the window.', status: 409 };
+  }
 
   // Stripe customer, so saved cards and receipts follow the person.
   let customerId = profile.stripe_customer_id;

@@ -22,3 +22,27 @@ export function isOrderable(item: Availability, today = new Date()): boolean {
 export function soldOutToday(today = new Date()): string {
   return today.toISOString().slice(0, 10);
 }
+
+export type CheckoutBlock =
+  | { blocked: false }
+  | { blocked: true; reason: 'closed' | 'no_name' | 'payments_off'; message: string };
+
+/**
+ * Whether this cart can be sent, and if not, what to tell the customer. The server
+ * enforces the same rules; this just means nobody finds out at the payment step.
+ */
+export function checkoutBlock(input: {
+  open: boolean | null; paymentsEnabled: boolean | null; total: number; name: string;
+}): CheckoutBlock {
+  if (input.open === false) {
+    return { blocked: true, reason: 'closed', message: 'The truck is closed right now.' };
+  }
+  // A $0 order (the free drink) never needs card payments.
+  if (input.total > 0 && input.paymentsEnabled === false) {
+    return { blocked: true, reason: 'payments_off', message: 'Card payments start very soon. For now, order and pay at the window. Your free drink still works here.' };
+  }
+  if (!input.name.trim()) {
+    return { blocked: true, reason: 'no_name', message: 'Add a name so we can call your order out.' };
+  }
+  return { blocked: false };
+}

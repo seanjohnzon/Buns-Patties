@@ -103,7 +103,11 @@ create table truck_status (
   hours_text text,
   prep_minutes int not null default 15,
   halal boolean not null default true,
-  instagram text
+  instagram text,
+  -- Off until Stripe has approved the owner and we have connected it. While off,
+  -- only $0 orders (the free drink) can go through; paid carts are told to pay
+  -- at the window instead of hitting an error at checkout.
+  payments_enabled boolean not null default false
 );
 insert into truck_status (id, is_open, location_name, address, hours_text, instagram) values (1, false, 'TBD', 'Houston, TX', 'TBD', 'https://www.instagram.com/buns.patties');
 

@@ -10,7 +10,8 @@
     "lng": null,
     "hoursText": "TBD",
     "prepMinutes": 15,
-    "instagram": "https://www.instagram.com/buns.patties"
+    "instagram": "https://www.instagram.com/buns.patties",
+    "paymentsEnabled": true
   },
   "categories": [
     {

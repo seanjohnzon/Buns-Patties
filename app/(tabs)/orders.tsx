@@ -26,7 +26,7 @@ export default function Orders() {
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View>
                     <Body style={{ fontWeight: '600' }}>{o.lines.map((l) => `${l.qty}× ${l.name}`).join(', ')}</Body>
-                    <Muted>{new Date(o.createdAt).toLocaleString()} · +{o.pointsEarned} pts</Muted>
+                    <Muted>{new Date(o.createdAt).toLocaleString()}</Muted>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Body style={{ fontWeight: '600' }}>{money(o.total)}</Body>

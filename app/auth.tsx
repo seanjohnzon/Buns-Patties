@@ -51,7 +51,7 @@ export default function Auth() {
           <Button title="Resend" variant="ghost" onPress={send} />
         </>
       )}
-      <Body style={{ textAlign: 'center', marginTop: 12 }}>You get 100 points just for joining.</Body>
+      <Body style={{ textAlign: 'center', marginTop: 12 }}>Sign in to claim your free drink and order ahead.</Body>
     </Screen>
   );
 }

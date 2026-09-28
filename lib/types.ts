@@ -80,6 +80,8 @@ export type Profile = {
 
 export type TruckStatus = {
   isOpen: boolean;
+  /** Card payments live? Off until Stripe approves the owner. */
+  paymentsEnabled?: boolean;
   halal?: boolean;
   instagram?: string | null;
   locationName: string;

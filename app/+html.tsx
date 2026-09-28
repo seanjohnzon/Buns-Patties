@@ -21,7 +21,14 @@ export default function Root({ children }: { children: ReactNode }) {
 
         {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
-        {/* Add any additional <head> elements that you want globally available on web... */}
+        {/* So "Add to Home Screen" gives the owner and customers the real logo, not a placeholder. */}
+        <title>Buns &amp; Patties</title>
+        <meta name="description" content="Order ahead from the Buns & Patties halal smash burger truck in Houston." />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-title" content="Buns & Patties" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#111111" />
       </head>
       <body>{children}</body>
     </html>
@@ -31,9 +38,4 @@ export default function Root({ children }: { children: ReactNode }) {
 const responsiveBackground = `
 body {
   background-color: #fff;
-}
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #000;
-  }
 }`;

@@ -3,6 +3,9 @@
 import Constants from 'expo-constants';
 import seed from '@/data/menu.seed.json';
 import { supabase, hasSupabase } from './supabase';
+
+/** Demo data is for development only. See getProfile. */
+export const DEMO_ALLOWED = __DEV__ || process.env.EXPO_PUBLIC_ENV === 'sandbox';
 import type { Category, MenuItem, ModifierGroup, Order, Profile, Reward, Role, TruckStatus } from './types';
 export { isOrderable, isSoldOut } from './availability';
 import { soldOutToday } from './availability';
@@ -24,7 +27,7 @@ function hydrate(items: typeof seed.items): MenuItem[] {
 export async function getTruckStatus(): Promise<TruckStatus> {
   if (hasSupabase) {
     const { data } = await supabase.from('truck_status').select('*').eq('id', 1).single();
-    if (data) return { isOpen: data.is_open, halal: data.halal, instagram: data.instagram, locationName: data.location_name, address: data.address, lat: data.lat, lng: data.lng, hoursText: data.hours_text, prepMinutes: data.prep_minutes };
+    if (data) return { isOpen: data.is_open, paymentsEnabled: data.payments_enabled, halal: data.halal, instagram: data.instagram, locationName: data.location_name, address: data.address, lat: data.lat, lng: data.lng, hoursText: data.hours_text, prepMinutes: data.prep_minutes };
   }
   return demoStatus ?? (seed.truck as TruckStatus);
 }
@@ -87,7 +90,10 @@ function hydrateProfile(d: any): Profile {
 
 export async function getProfile(): Promise<Profile | null> {
   if (!hasSupabase) {
-    // Demo mode signs you in as the owner so every screen is reachable.
+    // Demo mode signs you in as the owner so every screen is reachable — but ONLY
+    // in a development build. A deployed build with no database configured must
+    // show a signed-out app, never hand every visitor the owner's screens.
+    if (!DEMO_ALLOWED) return null;
     return hydrateProfile({ id: 'demo', name: 'Cihan', phone: null, points: 730, role: (process.env.EXPO_PUBLIC_DEMO_ROLE ?? 'owner'), birthday: null });
   }
   const { data: { user } } = await supabase.auth.getUser();

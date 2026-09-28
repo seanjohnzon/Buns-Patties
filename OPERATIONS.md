@@ -55,6 +55,46 @@ in SIT that a restricted key can mint them), Charges (read), Events (read).
   This is what Owner.com, Toast and Square all do. Worth moving to at the point
   where chasing individual Stripe accounts becomes the bottleneck, not before.
 
+## Order of operations for a new client
+
+1. **Business type, day one.** Apple and Google Play only accept a registered
+   company (LLC or corporation) as an organisation. A sole trader or DBA enrols as
+   an individual under their own name — and a personal Google Play account created
+   since November 2023 has to run a 12-tester, 14-day closed test before release.
+2. **Domain, day one.** Apple rejects organisations without a real, public website
+   on their own domain *and* a work email on that domain — social links and parked
+   pages are refused. Google Play, Stripe and the QR sticker all point at it too.
+   We register it (handed over if they leave), put a real site on it within a day
+   — legal business name, menu, hours, contact, privacy/refund/terms pages — and
+   set up `hello@<domain>` forwarding to their normal inbox.
+3. **D-U-N-S** gates both store accounts. Apple can take 2 more working days to
+   see a newly issued number.
+4. Store accounts the day the D-U-N-S arrives; Stripe on day one, independently.
+
+For Buns & Patties: `bunsandpattieshtx.com` (plain `bunsandpatties.com` belongs to
+an unrelated restaurant in Berkley, Michigan).
+
+## Sign-in texts
+
+Supabase phone auth through **Twilio Verify**, not a plain Twilio number. US
+carriers require A2P 10DLC brand and campaign registration for application SMS,
+which takes days and needs the client's EIN; Verify is exempt for one-time
+passcodes. Ours, pooled across clients.
+
+## Card payments switch
+
+`truck_status.payments_enabled` starts **off**. While off, the server refuses any
+order above $0 and the cart tells customers to pay at the window — the free drink
+still works. We flip it on once Stripe has approved the owner and we have
+connected a restricted key. Owners cannot toggle it.
+
+## Demo mode
+
+Demo data signs every visitor in as the owner. It only runs when `__DEV__` or
+`EXPO_PUBLIC_ENV=sandbox`. A production build with no database configured shows a
+signed-out app, and `/owner` redirects to sign-in — verified against a real
+static export. Never set `EXPO_PUBLIC_ENV=sandbox` on a deployed site.
+
 ## The pipeline
 
 ```

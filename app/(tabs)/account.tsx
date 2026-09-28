@@ -26,12 +26,12 @@ export default function Account() {
           <Card style={{ gap: 4 }}>
             <H2>{profile.name ?? 'Welcome'}</H2>
             <Muted>{profile.phone ?? (hasSupabase ? '' : 'Demo mode — Supabase not configured')}</Muted>
-            <Body>{profile.points.toLocaleString()} points</Body>
+            <Muted>Your next free item is on the Rewards tab.</Muted>
           </Card>
         ) : (
           <Card style={{ gap: 10 }}>
             <H2>Sign in to earn rewards</H2>
-            <Muted>Get 100 points just for joining.</Muted>
+            <Muted>Claim your free drink and order ahead.</Muted>
             <Button title="Sign in with phone" onPress={() => router.push('/auth')} />
           </Card>
         )}

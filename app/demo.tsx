@@ -3,7 +3,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Screen, Muted } from '@/components/ui';
-import { getItem } from '@/lib/api';
+import { DEMO_ALLOWED, getItem } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 
 export default function Demo() {
@@ -11,6 +11,7 @@ export default function Demo() {
   const { clear, add } = useCart();
 
   useEffect(() => {
+    if (!DEMO_ALLOWED) { router.replace('/(tabs)/menu'); return; }
     (async () => {
       clear();
       const og = await getItem('og');
