@@ -1,16 +1,21 @@
-// Data layer. Runs off the local seed until Supabase env vars are set,
-// then reads/writes the real tables. Screens never talk to Supabase directly.
+// Data layer. Screens never talk to a database directly.
+//   Real database configured (EXPO_PUBLIC_SUPABASE_*): Supabase.
+//   Otherwise, in test builds only (DEMO_ALLOWED): the test database on the phone
+//   (lib/local — SQLite), so Expo Go and the TestFlight test app work end to end
+//   with pretend orders and remember them between launches.
 import Constants from 'expo-constants';
 import seed from '@/data/menu.seed.json';
 import { supabase, hasSupabase } from './supabase';
 
-/** Demo data is for development only. See getProfile. */
+/** Test mode (no real database) is for development and test builds only. See getProfile. */
 export const DEMO_ALLOWED = __DEV__ || process.env.EXPO_PUBLIC_ENV === 'sandbox';
 import type { Category, MenuItem, ModifierGroup, Order, Profile, Role, Testimonial, TruckStatus } from './types';
 export { isOrderable, isSoldOut } from './availability';
 import { soldOutToday } from './availability';
 import { phoneDigits } from './phone';
-import type { Campaign, CampaignAction, CampaignClaim, StampTier } from './campaigns';
+import { type Campaign, type CampaignAction, type CampaignClaim, type StampTier } from './campaigns';
+import { localStore } from './local';
+import { campaignStats, loyalty, ownerToday, placeTestOrder, productMix, type TestOrderInput } from './local/logic';
 import type { LoyaltyRaw, MixRow, TodayRaw } from './reporting';
 
 const groups = seed.modifierGroups as Record<string, ModifierGroup>;
@@ -38,21 +43,12 @@ export async function getTruckStatus(): Promise<TruckStatus> {
       testimonials: Array.isArray(data.testimonials) ? data.testimonials : [],
     };
   }
-  return demoStatus ?? { ...(seed.truck as TruckStatus), testimonials: DEMO_TESTIMONIALS };
+  return localStore().read('truck');
 }
 
-// Shown only in demo builds, and labelled SAMPLE on screen, so nobody mistakes
-// them for real reviews. The real ones are the owner's picks from his Google page.
-const DEMO_TESTIMONIALS: Testimonial[] = [
-  { name: 'Sample', quote: 'The owner’s favourite Google reviews go here. Pick them in Owner → The truck page.', stars: 5, sample: true },
-  { name: 'Sample', quote: 'Three to five short ones read best.', stars: 5, sample: true },
-];
-
-// Demo mode keeps staff edits in memory so the flow can be shown without a backend.
-let demoStatus: TruckStatus | null = null;
 
 export async function setTruckStatus(s: TruckStatus): Promise<void> {
-  if (!hasSupabase) { demoStatus = s; return; }
+  if (!hasSupabase) { localStore().write('truck', { ...localStore().read('truck'), ...s }); return; }
   const { error } = await supabase.from('truck_status').update({
     is_open: s.isOpen, location_name: s.locationName, address: s.address,
     hours_text: s.hoursText, prep_minutes: s.prepMinutes,
@@ -62,7 +58,7 @@ export async function setTruckStatus(s: TruckStatus): Promise<void> {
 
 /** The owner's "truck page": story, contact, socials, delivery links, reviews. */
 export async function setTruckPage(s: TruckStatus): Promise<void> {
-  if (!hasSupabase) { demoStatus = s; return; }
+  if (!hasSupabase) { localStore().write('truck', { ...localStore().read('truck'), ...s }); return; }
   const { error } = await supabase.from('truck_status').update({
     story: s.story || null, contact_phone: s.phone || null, contact_email: s.email || null,
     instagram: s.instagram || null, tiktok: s.tiktok || null, facebook: s.facebook || null,
@@ -91,8 +87,10 @@ export async function getMenu(): Promise<{ categories: Category[]; items: MenuIt
       };
     }
   }
-  const today = soldOutToday();
-  return { categories: seed.categories, items: hydrate(seed.items).map((i) => (demoSoldOut.has(i.id) ? { ...i, soldOutUntil: today } : i)) };
+  // Test database: a switch holds for the day it was flipped, then clears itself,
+  // exactly like sold_out_until on the real menu.
+  const off = localStore().read('soldOut');
+  return { categories: seed.categories, items: hydrate(seed.items).map((i) => (off[i.id] ? { ...i, soldOutUntil: off[i.id] } : i)) };
 }
 
 export async function getItem(id: string): Promise<MenuItem | undefined> {
@@ -116,7 +114,7 @@ export async function getProfile(): Promise<Profile | null> {
     // in a development build. A deployed build with no database configured must
     // show a signed-out app, never hand every visitor the owner's screens.
     if (!DEMO_ALLOWED) return null;
-    return hydrateProfile({ id: 'demo', name: 'Cihan', phone: null, role: (process.env.EXPO_PUBLIC_DEMO_ROLE ?? 'owner'), birthday: null });
+    return hydrateProfile({ id: 'demo', name: localStore().read('profileName'), phone: null, role: (process.env.EXPO_PUBLIC_DEMO_ROLE ?? 'owner'), birthday: null });
   }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -124,34 +122,14 @@ export async function getProfile(): Promise<Profile | null> {
   return data ? hydrateProfile(data) : null;
 }
 
-let DEMO_ORDERS: Order[] = [
-  {
-    id: 'demo-live', userId: 'demo', status: 'preparing',
-    subtotal: 24.5, tax: 0, tip: 3, discount: 0, total: 27.5, stampsEarned: 1,
-    pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 6 * 60000).toISOString(),
-    lines: [
-      { name: 'The OG', qty: 1, price: 12.5, mods: ['Double patty', 'No cheese', 'Beef bacon', 'Ketchup', 'Mustard'], note: 'Well done please' },
-      { name: 'Smash Fries', qty: 1, price: 8, mods: ['Single patty', 'American cheese', 'OG House'] },
-      { name: 'Can Drink', qty: 1, price: 2, mods: ['Coke'] },
-      { name: 'Can Drink (on us)', qty: 1, price: 0, mods: ['Sprite'], free: true },
-    ],
-  },
-  {
-    id: 'demo-done', userId: 'demo', status: 'completed',
-    subtotal: 24, tax: 0, tip: 0, discount: 0, total: 24, stampsEarned: 1,
-    pickupAt: null, pickupName: 'Cihan', createdAt: new Date(Date.now() - 8 * 864e5).toISOString(),
-    lines: [{ name: 'BBQ Bacon', qty: 2, price: 12, mods: ['Double patty'] }],
-  },
-];
-
 export async function getMyOrders(): Promise<Order[]> {
-  if (!hasSupabase) return DEMO_ORDERS;
+  if (!hasSupabase) return localStore().read('orders');
   const { data } = await supabase.from('orders').select('*, order_lines(*)').order('created_at', { ascending: false }).limit(30);
   return (data ?? []).map(mapOrder);
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
-  if (!hasSupabase) return DEMO_ORDERS.find((o) => o.id === id) ?? DEMO_ORDERS[0];
+  if (!hasSupabase) return localStore().read('orders').find((o) => o.id === id) ?? null;
   const { data } = await supabase.from('orders').select('*, order_lines(*)').eq('id', id).single();
   return data ? mapOrder(data) : null;
 }
@@ -189,13 +167,17 @@ export async function createCheckout(input: OrderInput): Promise<{ orderId: stri
 
 export async function staffListOrders(): Promise<Order[]> {
   // Oldest first, the order the kitchen cooks in — same as the real query below.
-  if (!hasSupabase) return DEMO_ORDERS.filter((o) => o.status !== 'completed').sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  if (!hasSupabase) {
+    return localStore().read('orders')
+      .filter((o) => o.status === 'received' || o.status === 'preparing' || o.status === 'ready')
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
   const { data } = await supabase.from('orders').select('*, order_lines(*)').in('status', ['received', 'preparing', 'ready']).order('created_at');
   return (data ?? []).map(mapOrder);
 }
 
 export async function staffSetStatus(id: string, status: Order['status']) {
-  if (!hasSupabase) { DEMO_ORDERS = DEMO_ORDERS.map((o) => (o.id === id ? { ...o, status } : o)); return; }
+  if (!hasSupabase) { const s = localStore(); s.write('orders', s.read('orders').map((o) => (o.id === id ? { ...o, status } : o))); return; }
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) throw error;
 }
@@ -210,40 +192,25 @@ function mapOrder(o: any): Order {
 
 // ---------- owner reporting ----------
 // The database aggregates and returns small JSON; the phone never downloads
-// the order history. Demo mode returns plausible figures so the screens are
-// reviewable before Supabase exists.
+// the order history. The test database works the same figures out from the
+// test orders on the phone (lib/local/logic.ts).
 
 export async function getOwnerToday(): Promise<TodayRaw> {
-  if (!hasSupabase) {
-    return { netToday: 412.5, tipsToday: 38, ordersToday: 17, discountToday: 12, netLastWeek: 335, ordersLastWeek: 15 };
-  }
+  if (!hasSupabase) return ownerToday(localStore().read('orders'), new Date());
   const { data, error } = await supabase.rpc('owner_today');
   if (error) throw error;
   return data as TodayRaw;
 }
 
 export async function getProductMix(days = 7): Promise<MixRow[]> {
-  if (!hasSupabase) {
-    // Ordered by quantity, exactly as owner_product_mix returns it.
-    return [
-      { menuItemId: 'og', name: 'The OG', qty: 64, revenue: 704 },
-      { menuItemId: 'can_drink', name: 'Can Drink', qty: 52, revenue: 104 },
-      { menuItemId: 'smash_fries', name: 'Smash Fries', qty: 41, revenue: 369 },
-      { menuItemId: 'bbq_bacon', name: 'BBQ Bacon', qty: 33, revenue: 396 },
-      { menuItemId: 'wings', name: 'Wings', qty: 28, revenue: 322 },
-      { menuItemId: 'lone_star_heat', name: 'Lone Star Heat', qty: 19, revenue: 209 },
-      { menuItemId: 'seasoned_fries', name: 'Seasoned Fries', qty: 16, revenue: 80 },
-    ];
-  }
+  if (!hasSupabase) return productMix(localStore().read('orders'), new Date(), days);
   const { data, error } = await supabase.rpc('owner_product_mix', { p_days: days });
   if (error) throw error;
   return (data ?? []).map((r: any) => ({ menuItemId: r.menu_item_id, name: r.name, qty: Number(r.qty), revenue: Number(r.revenue) }));
 }
 
 export async function getOwnerLoyalty(): Promise<LoyaltyRaw> {
-  if (!hasSupabase) {
-    return { members: 214, newThisWeek: 23, givenThisWeek: 31, givenValueThisWeek: 96 };
-  }
+  if (!hasSupabase) return loyalty(localStore().read('orders'), new Date());
   const { data, error } = await supabase.rpc('owner_loyalty');
   if (error) throw error;
   return data as LoyaltyRaw;
@@ -274,8 +241,7 @@ export async function squareConnectUrl(): Promise<string> {
 export async function listTeam(): Promise<Profile[]> {
   if (!hasSupabase) {
     return [
-      hydrateProfile({ id: 'demo', name: 'Cihan', phone: '+1 713 555 4402', role: 'owner' }),
-      hydrateProfile({ id: 'u2', name: 'Samil', phone: '+1 713 555 8890', role: 'staff' }),
+      hydrateProfile({ id: 'demo', name: localStore().read('profileName') ?? 'You (test owner)', phone: null, role: 'owner' }),
     ];
   }
   const { data, error } = await supabase.from('profiles').select('*').in('role', ['staff', 'owner']).order('role');
@@ -302,11 +268,13 @@ export async function findByPhone(phone: string): Promise<Profile | null> {
 
 // ---------- staff: sold out ----------
 
-// Demo builds remember sold-out switches on the phone, like the truck status.
-const demoSoldOut = new Set<string>();
-
 export async function setSoldOut(menuItemId: string, soldOut: boolean): Promise<void> {
-  if (!hasSupabase) { if (soldOut) demoSoldOut.add(menuItemId); else demoSoldOut.delete(menuItemId); return; }
+  if (!hasSupabase) {
+    const s = localStore(); const off = { ...s.read('soldOut') };
+    if (soldOut) off[menuItemId] = soldOutToday(); else delete off[menuItemId];
+    s.write('soldOut', off);
+    return;
+  }
   const { error } = await supabase.from('menu_items')
     .update({ sold_out_until: soldOut ? soldOutToday() : null })
     .eq('id', menuItemId);
@@ -321,7 +289,12 @@ export type FeedbackRow = {
 };
 
 export async function sendFeedback(input: { rating: number | null; message: string; orderId?: string | null }) {
-  if (!hasSupabase) return;
+  if (!hasSupabase) {
+    const s = localStore();
+    s.write('feedback', [{ id: 'fb-' + Date.now().toString(36), rating: input.rating, message: input.message.trim() || null,
+      build: Constants.expoConfig?.version ?? null, handled: false, createdAt: new Date().toISOString() }, ...s.read('feedback')]);
+    return;
+  }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Sign in first so we can follow up with you.');
   const { error } = await supabase.from('feedback').insert({
@@ -336,14 +309,7 @@ export async function sendFeedback(input: { rating: number | null; message: stri
 }
 
 export async function getOwnerFeedback(days = 30): Promise<FeedbackRow[]> {
-  if (!hasSupabase) {
-    return [
-      { id: '1', rating: 2, message: 'Waited 25 min for a 15 min pickup. App said ready before it was.', build: '1.0.0', handled: false, createdAt: new Date(Date.now() - 36e5).toISOString() },
-      { id: '2', rating: 5, message: 'Ordering ahead is great, no queue at lunch.', build: '1.0.0', handled: false, createdAt: new Date(Date.now() - 9e6).toISOString() },
-      { id: '3', rating: 3, message: 'Could not find how to remove pickles.', build: '1.0.0', handled: true, createdAt: new Date(Date.now() - 18e6).toISOString() },
-      { id: '4', rating: 5, message: null, build: '1.0.0', handled: true, createdAt: new Date(Date.now() - 26e6).toISOString() },
-    ];
-  }
+  if (!hasSupabase) return [...localStore().read('feedback')].sort((a, b) => Number(a.handled) - Number(b.handled) || b.createdAt.localeCompare(a.createdAt));
   const { data, error } = await supabase.rpc('owner_feedback', { p_days: days });
   if (error) throw error;
   return (data ?? []).map((r: any) => ({
@@ -352,7 +318,7 @@ export async function getOwnerFeedback(days = 30): Promise<FeedbackRow[]> {
 }
 
 export async function markFeedbackHandled(id: string, handled: boolean) {
-  if (!hasSupabase) return;
+  if (!hasSupabase) { const s = localStore(); s.write('feedback', s.read('feedback').map((f) => (f.id === id ? { ...f, handled } : f))); return; }
   const { error } = await supabase.from('feedback').update({ handled }).eq('id', id);
   if (error) throw error;
 }
@@ -386,7 +352,7 @@ export async function releaseStuckOrder(orderId: string) {
 
 /** The name the order is called out under. */
 export async function saveName(name: string) {
-  if (!hasSupabase) return;
+  if (!hasSupabase) { if (name.trim()) localStore().write('profileName', name.trim()); return; }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from('profiles').update({ name: name.trim() }).eq('id', user.id);
@@ -395,85 +361,35 @@ export async function saveName(name: string) {
 
 // ---------- campaigns ----------
 
-let demoClaims: CampaignClaim[] = [];
-let demoStamps: Record<string, number> = { stamp_card: 6 };
 
-/** The two campaigns the app ships with. Mirrors the inserts in supabase/schema.sql. */
-export const DEFAULT_CAMPAIGNS: Campaign[] = [
-  {
-    id: 'welcome_drink', kind: 'action', title: 'Free drink', blurb: 'Follow us and your first drink is on us', finePrint: null,
-    actions: [{ id: 'follow_instagram', label: 'Follow us on Instagram', url: 'https://www.instagram.com/buns.patties' }],
-    rewardItemIds: ['can_drink'], cover: {}, minOrder: null, tiers: [],
-    maxClaims: 1000, claimsCount: 138, endsAt: null, active: true,
-  },
-  {
-    id: 'stamp_card', kind: 'stamps', title: 'Stamp card', blurb: 'Every order is a stamp',
-    finePrint: 'Orders of $15 or more before tax earn a stamp. One stamp per order. Taking a reward uses its stamps.',
-    actions: [], rewardItemIds: [], cover: {}, minOrder: 15,
-    tiers: [
-      { stamps: 5, label: 'Free fries', itemIds: ['seasoned_fries'], cover: {} },
-      { stamps: 10, label: 'Free burger', itemIds: ['og', 'wake_n_smash', 'lone_star_heat', 'bbq_bacon'], cover: { patty: 2 } },
-    ],
-    maxClaims: null, claimsCount: 0, endsAt: null, active: true,
-  },
-];
-let demoCampaigns = DEFAULT_CAMPAIGNS;
+// ---------- test builds: the whole flow, with no real database ----------
+// Checkout in a test build places the order in the test database instead of
+// charging a card. lib/local/logic.ts follows the server's rules: stamps spent for
+// a stamp reward, a one-off offer used up, a stamp for an order over the minimum.
 
-// ---------- demo builds: the whole flow, with no backend ----------
-// So the owner can walk every step in Expo Go before a database exists. These
-// mirror what the server does (supabase/functions/_shared/build-order.ts and the
-// on_order_paid trigger): stamps are spent for a stamp reward, a one-off offer is
-// marked used, and an order of the card's minimum or more earns a stamp.
-
-export type DemoLine = { name: string; qty: number; price: number; mods: string[]; note?: string; claim?: { campaign: string; tier?: number } };
-
-export async function demoPlaceOrder(input: { lines: DemoLine[]; subtotal: number; tax: number; tip: number; total: number; saved: number; pickupName: string; pickupAt: string | null }): Promise<string> {
-  if (!DEMO_ALLOWED || hasSupabase) throw new Error('demo only');
-  for (const l of input.lines) {
-    if (!l.claim) continue;
-    const c = demoCampaigns.find((x) => x.id === l.claim!.campaign);
-    if (c?.kind === 'stamps' && l.claim.tier) {
-      if ((demoStamps[c.id] ?? 0) < l.claim.tier) throw new Error('not enough stamps yet');
-      demoStamps = { ...demoStamps, [c.id]: (demoStamps[c.id] ?? 0) - l.claim.tier };
-    } else {
-      const claim = demoClaims.find((x) => x.campaignId === l.claim!.campaign && !x.usedAt);
-      if (!claim) throw new Error('that offer has not been unlocked');
-      demoClaims = demoClaims.map((x) => (x === claim ? { ...x, usedAt: new Date().toISOString() } : x));
-    }
-  }
-  let earned = 0;
-  for (const c of demoCampaigns) {
-    if (c.kind === 'stamps' && c.active && input.subtotal > 0 && input.subtotal >= (c.minOrder ?? 0)) {
-      demoStamps = { ...demoStamps, [c.id]: (demoStamps[c.id] ?? 0) + 1 };
-      earned += 1;
-    }
-  }
-  const id = 'demo-' + Date.now().toString(36);
-  DEMO_ORDERS = [{
-    id, userId: 'demo', status: 'received',
-    subtotal: input.subtotal, tax: input.tax, tip: input.tip, discount: input.saved, total: input.total, stampsEarned: earned,
-    pickupAt: input.pickupAt, pickupName: input.pickupName, createdAt: new Date().toISOString(),
-    lines: input.lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, mods: l.mods, note: l.note ?? null, free: !!l.claim })),
-  }, ...DEMO_ORDERS];
-  return id;
+export async function demoPlaceOrder(input: TestOrderInput): Promise<string> {
+  if (!DEMO_ALLOWED || hasSupabase) throw new Error('test builds only');
+  return placeTestOrder(localStore(), input, new Date(), 'test-' + Date.now().toString(36)).id;
 }
 
-/** Demo builds only: put the test account in a known state. */
-export function demoSet(s: { stamps?: number; resetOffers?: boolean }) {
+/** Test builds only: put the test account in a known state, or start again. */
+export function demoSet(s: { stamps?: number; resetOffers?: boolean; wipe?: boolean }) {
   if (!DEMO_ALLOWED || hasSupabase) return;
-  if (s.stamps !== undefined) demoStamps = { ...demoStamps, stamp_card: s.stamps };
-  if (s.resetOffers) demoClaims = [];
+  const st = localStore();
+  if (s.wipe) { st.wipe(); return; }
+  if (s.stamps !== undefined) st.write('stamps', { ...st.read('stamps'), stamp_card: s.stamps });
+  if (s.resetOffers) st.write('claims', []);
 }
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  if (!hasSupabase) return demoCampaigns.filter((c) => c.active);
+  if (!hasSupabase) return localStore().read('campaigns').filter((c) => c.active);
   const { data, error } = await supabase.from('campaigns').select('*').eq('active', true).order('created_at');
   if (error) throw error;
   return (data ?? []).map(hydrateCampaign);
 }
 
 export async function getMyCampaignClaims(): Promise<CampaignClaim[]> {
-  if (!hasSupabase) return demoClaims;
+  if (!hasSupabase) return localStore().read('claims');
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
   const { data } = await supabase.from('campaign_claims').select('*').eq('user_id', user.id);
@@ -482,7 +398,7 @@ export async function getMyCampaignClaims(): Promise<CampaignClaim[]> {
 
 /** Stamps on each card, by campaign id. */
 export async function getMyStamps(): Promise<Record<string, number>> {
-  if (!hasSupabase) return demoStamps;
+  if (!hasSupabase) return localStore().read('stamps');
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return {};
   const { data } = await supabase.from('campaign_stamps').select('campaign_id, stamps').eq('user_id', user.id);
@@ -496,9 +412,14 @@ export async function getMyStamps(): Promise<Record<string, number>> {
  */
 export async function claimCampaign(campaignId: string, actionId: string) {
   if (!hasSupabase) {
-    if (!demoClaims.some((c) => c.campaignId === campaignId)) {
-      demoClaims = [...demoClaims, { campaignId, unlockedBy: actionId, usedAt: null }];
-    }
+    // Same checks as claim_campaign(): running, offers that action, one per account, under the cap.
+    const s = localStore();
+    const c = s.read('campaigns').find((x) => x.id === campaignId);
+    const claims = s.read('claims');
+    if (!c || !c.active || c.kind !== 'action') throw new Error('that offer is not running');
+    if (!c.actions.some((a) => a.id === actionId)) throw new Error('not one of the things this offer asks for');
+    if (c.maxClaims !== null && claims.filter((x) => x.campaignId === c.id).length >= c.maxClaims) throw new Error('that offer is all gone');
+    if (!claims.some((x) => x.campaignId === campaignId)) s.write('claims', [...claims, { campaignId, unlockedBy: actionId, usedAt: null }]);
     return;
   }
   const { error } = await supabase.rpc('claim_campaign', { p_campaign: campaignId, p_action: actionId });
@@ -514,11 +435,8 @@ export type CampaignStats = {
 
 export async function getOwnerCampaigns(): Promise<CampaignStats[]> {
   if (!hasSupabase) {
-    return demoCampaigns.map((c) => ({
-      id: c.id, kind: c.kind, title: c.title, active: c.active, endsAt: c.endsAt,
-      maxClaims: c.maxClaims, claimsCount: c.claimsCount,
-      usedCount: c.kind === 'stamps' ? 12 : 96, cost: c.kind === 'stamps' ? 74 : 192,
-    }));
+    const s = localStore();
+    return campaignStats({ campaigns: s.read('campaigns'), claims: s.read('claims'), orders: s.read('orders') });
   }
   const { data, error } = await supabase.rpc('owner_campaigns');
   if (error) throw error;
@@ -538,7 +456,8 @@ export type CampaignDraft = {
 export async function saveCampaign(c: CampaignDraft) {
   if (!hasSupabase) {
     const next: Campaign = { ...c, blurb: c.blurb || null, finePrint: c.finePrint || null, claimsCount: 0 };
-    demoCampaigns = [...demoCampaigns.filter((x) => x.id !== c.id), next];
+    const s = localStore();
+    s.write('campaigns', [...s.read('campaigns').filter((x) => x.id !== c.id), next]);
     return;
   }
   const { error } = await supabase.from('campaigns').upsert({
@@ -551,7 +470,7 @@ export async function saveCampaign(c: CampaignDraft) {
 }
 
 export async function setCampaignActive(id: string, active: boolean) {
-  if (!hasSupabase) { demoCampaigns = demoCampaigns.map((c) => (c.id === id ? { ...c, active } : c)); return; }
+  if (!hasSupabase) { const s = localStore(); s.write('campaigns', s.read('campaigns').map((c) => (c.id === id ? { ...c, active } : c))); return; }
   const { error } = await supabase.from('campaigns').update({ active }).eq('id', id);
   if (error) throw error;
 }

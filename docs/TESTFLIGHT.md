@@ -17,9 +17,12 @@ store build is simply made on his account when it exists (`eas build --profile u
 
 ## What the test build is
 
-Profile **`preview`** in `eas.json`: the full app in demo mode — no database yet, so
-it runs on pretend orders exactly like Expo Go, with **Account → Test controls**. The
-owner can walk the whole Gate 1 checklist on his own phone. When the SIT database
+Profile **`preview`** in `eas.json`: the full app on the **test database** — a small
+SQLite file on the phone (`lib/local`). Orders are pretend (no card), but they are
+kept: stamps, orders, sold-out switches, campaigns and the owner's numbers all
+survive closing the app. **Account → Test controls** sets the stamp card, resets the
+free drink, or wipes everything. Each phone has its own test data. The owner can walk
+the whole Gate 1 checklist on his own phone. When the SIT database
 exists, profile **`sit`** is the same app pointed at it (real sign-in, Square sandbox).
 
 ## The one-time setup (needs Samil, about 10 minutes)

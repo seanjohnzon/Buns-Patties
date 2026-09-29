@@ -131,3 +131,23 @@ export function nextTier(c: Pick<Campaign, 'tiers'>, stamps: number) {
 export function afterRedeem(stamps: number, tier: Pick<StampTier, 'stamps'>) {
   return Math.max(0, stamps - tier.stamps);
 }
+
+/** The two campaigns the app ships with. Mirrors the inserts in supabase/schema.sql. */
+export const DEFAULT_CAMPAIGNS: Campaign[] = [
+  {
+    id: 'welcome_drink', kind: 'action', title: 'Free drink', blurb: 'Follow us and your first drink is on us', finePrint: null,
+    actions: [{ id: 'follow_instagram', label: 'Follow us on Instagram', url: 'https://www.instagram.com/buns.patties' }],
+    rewardItemIds: ['can_drink'], cover: {}, minOrder: null, tiers: [],
+    maxClaims: 1000, claimsCount: 0, endsAt: null, active: true,
+  },
+  {
+    id: 'stamp_card', kind: 'stamps', title: 'Stamp card', blurb: 'Every order is a stamp',
+    finePrint: 'Orders of $15 or more before tax earn a stamp. One stamp per order. Taking a reward uses its stamps.',
+    actions: [], rewardItemIds: [], cover: {}, minOrder: 15,
+    tiers: [
+      { stamps: 5, label: 'Free fries', itemIds: ['seasoned_fries'], cover: {} },
+      { stamps: 10, label: 'Free burger', itemIds: ['og', 'wake_n_smash', 'lone_star_heat', 'bbq_bacon'], cover: { patty: 2 } },
+    ],
+    maxClaims: null, claimsCount: 0, endsAt: null, active: true,
+  },
+];

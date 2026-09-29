@@ -8,7 +8,7 @@ import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } fro
 import * as WebBrowser from 'expo-web-browser';
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
 import { DEMO_ALLOWED, createCheckout, demoPlaceOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
-import { cartTotals, lineTotal, useCart } from '@/lib/cart';
+import { cartTotals, lineTotal, listTotal, useCart } from '@/lib/cart';
 import { round2 } from '@/lib/pricing';
 import { summarise } from '@/lib/modifiers';
 import { checkoutBlock } from '@/lib/availability';
@@ -39,12 +39,17 @@ export default function Cart() {
     const block = checkoutBlock({ open, paymentsEnabled, total: t.total, name: pickupName });
     if (block.blocked) { Alert.alert(block.reason === 'closed' ? 'Closed right now' : 'Almost there', block.message); return; }
     if (!hasSupabase) {
-      // Demo build: no card, no server — place it locally so the rest of the
-      // flow (order screen, kitchen board, stamps) can be walked in Expo Go.
+      // Test build: no card, no server — the order goes into the test database on
+      // the phone, so the rest of the flow (order screen, kitchen board, stamps,
+      // the owner's numbers) can be walked in Expo Go or the TestFlight test app.
       if (!DEMO_ALLOWED) return;
       try {
         const id = await demoPlaceOrder({
-          lines: lines.map((l) => ({ name: l.item.name, qty: l.qty, price: round2(lineTotal(l) / l.qty), mods: l.chosen.map((o) => o.name), note: l.note, claim: l.claim })),
+          lines: lines.map((l) => ({
+            menuItemId: l.item.id, name: l.item.name, qty: l.qty,
+            price: round2(lineTotal(l) / l.qty), listPrice: round2(listTotal(l) / l.qty),
+            mods: l.chosen.map((o) => o.name), note: l.note, claim: l.claim,
+          })),
           subtotal: t.subtotal, tax: t.tax, tip: t.tip, total: t.total, saved: t.saved,
           pickupName: pickupName.trim(), pickupAt,
         });

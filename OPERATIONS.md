@@ -84,11 +84,13 @@ Demo data signs every visitor in as the owner. It only runs when `__DEV__` or
 signed-out app, and `/owner` redirects to sign-in — verified against a real
 static export. Never set `EXPO_PUBLIC_ENV=sandbox` on a deployed site.
 
-In demo the whole customer flow works with no backend, so it can be checked by
-hand in Expo Go (QA Gate 1): checkout places a pretend order that follows the
-server's rules (stamps earned at $15+, spent on rewards, one free drink), and
-**Account → Test controls** sets the stamp card to 0/4/5/9/10 or resets the free
-drink. None of it can run against a real database — `tests/demo-guard.test.mjs`.
+With no database configured, test builds run on the **test database**: one SQLite
+table on the phone (`lib/local`), so Expo Go and the TestFlight test app work end to
+end and remember everything between launches. Checkout places a pretend order that
+follows the server's rules (stamps earned at $15+, spent on rewards, one free drink);
+the owner's numbers are worked out from those orders. **Account → Test controls**
+sets the stamp card, resets the free drink, or wipes the test data. None of it can run
+against a real database — `tests/demo-guard.test.mjs`, `tests/local-db.test.mjs`.
 
 ## The pipeline
 

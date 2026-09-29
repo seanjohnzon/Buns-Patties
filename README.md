@@ -27,9 +27,10 @@ On the Mac mini (where Xcode lives): rsync to `~/Library/Caches/Anchor/burgertru
 Deep-link any screen for a demo: `exp://10.0.0.152:8085/--/menu`, `/--/rewards`, `/--/staff/status`,
 or `/--/demo` which seeds a sample order and jumps to checkout.
 
-Press `i` for iOS simulator. Without `.env` it runs off `data/menu.seed.json`, signed in
-as the owner, and the whole flow works with no backend: checkout places a pretend
-order, the kitchen board shows it, the stamp card counts it. **Account → Test controls**
+Press `i` for iOS simulator. Without `.env` it runs on the **test database** (SQLite on
+the phone, `lib/local`), signed in as the owner, and the whole flow works with no
+backend: checkout places a pretend order, the kitchen board shows it, the stamp card
+counts it, the owner's numbers add it up — and it is all still there next launch. **Account → Test controls**
 sets the stamp card (0/4/5/9/10) and resets the free drink, for the Expo Go checklist.
 
 ## Testing
