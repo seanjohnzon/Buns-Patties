@@ -2,6 +2,7 @@
 // one row in the kv table. Pure.
 import type { Campaign, CampaignClaim } from '../campaigns';
 import type { Order, TruckStatus } from '../types';
+import type { IntakeState } from '../intake';
 import type { KV } from './kv';
 
 export type LocalFeedback = { id: string; rating: number | null; message: string | null; build: string | null; handled: boolean; createdAt: string };
@@ -16,6 +17,8 @@ export type LocalState = {
   campaigns: Campaign[];
   feedback: LocalFeedback[];
   profileName: string | null;
+  /** Test mode only: intake forms "sent" with no database, by code. */
+  intake: Record<string, IntakeState>;
 };
 
 /** An order as the test database keeps it: enough to rebuild the owner's reports. */

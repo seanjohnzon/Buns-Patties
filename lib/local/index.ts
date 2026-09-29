@@ -18,7 +18,7 @@ export function freshState(): LocalState {
   return {
     truck: { ...(seed.truck as TruckStatus), testimonials: SAMPLE_TESTIMONIALS },
     soldOut: {}, orders: [], claims: [], stamps: {},
-    campaigns: DEFAULT_CAMPAIGNS, feedback: [], profileName: null,
+    campaigns: DEFAULT_CAMPAIGNS, feedback: [], profileName: null, intake: {},
   };
 }
 

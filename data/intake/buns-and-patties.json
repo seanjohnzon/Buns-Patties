@@ -1,0 +1,43 @@
+{
+  "code": "buns-and-patties",
+  "business": "Buns & Patties",
+  "opening": "Friday 2 October",
+  "sendTo": "cihanshah.sahin@gmail.com",
+  "costs": [
+    { "what": "Apple Developer — needed for the iPhone app", "cost": "$99 / year", "paidTo": "Apple" },
+    { "what": "Google Play — needed for the Android app", "cost": "$25 once", "paidTo": "Google" },
+    { "what": "Card payments on app and website orders", "cost": "2.9% + 30¢ per order", "paidTo": "Square, taken from each payment — no monthly fee" },
+    { "what": "Web address (bunsandpattieshtx.com)", "cost": "about $12 / year", "paidTo": "us — registered in your business name" },
+    { "what": "Running the app: database, sign-in texts, website", "cost": "about $30–45 / month", "paidTo": "us, at cost" }
+  ],
+  "costsNote": "Apple and Google take no commission on food orders. Your Square reader fees at the window don't change.",
+  "jobs": [
+    { "id": "reply", "title": "Answer the questions below", "text": "Legal name, business type and web address first — everything else waits on them." },
+    { "id": "duns", "title": "Request a D-U-N-S number", "link": "https://developer.apple.com/enroll/duns-lookup/", "text": "Free. Apple and Google both need it. Use your legal name letter for letter — \"Buns and Patties LLC\" and \"Buns & Patties\" count as different businesses. Up to 5 working days, then 2 more for Apple." },
+    { "id": "google", "title": "Fix the Google Maps listing", "link": "https://business.google.com/", "text": "It still shows Manassas and \"Temporarily closed\", which hides it from search. Set the Houston address and hours, then Business Profile settings → People and access → Add → our email → Manager." },
+    { "id": "square", "title": "Square", "link": "https://squareup.com/signup", "text": "Already use Square? Nothing to sign up for. On Thursday you sign in on one Square page and press Allow — that's all the access we get. We can't touch your bank or see your password." },
+    { "id": "apple", "title": "Apple Developer — the day the D-U-N-S arrives", "link": "https://developer.apple.com/programs/enroll/", "text": "Company / Organization, same name and address as the D-U-N-S, with hello@bunsandpattieshtx.com (Gmail is refused). Answer unknown numbers — Apple phones to verify. Then invite our email as App Manager." },
+    { "id": "play", "title": "Google Play — same day", "link": "https://play.google.com/console/signup", "text": "Account type: Organisation (Personal makes you find 12 testers for 14 days). Then Users and permissions → invite our email → Admin." },
+    { "id": "photos", "title": "Nine food photos", "text": "Five burgers, wings, both fries, a drink. Phone camera, daylight, from above, no flash." },
+    { "id": "sticker", "title": "Print the QR sticker", "text": "We send the file Wednesday. Two, 8 inches or bigger, weatherproof. One at the window, one where people queue." },
+    { "id": "thursday", "title": "Thursday: 20 minutes with us and your staff", "text": "Everyone signs in on their phone, you press Allow on Square, we run a $1 order and refund it." },
+    { "id": "friday", "title": "Friday: switch the truck to Open", "text": "Account → Open / close the truck → Open. Nobody can order until you do." }
+  ],
+  "questions": [
+    { "id": "legal", "label": "Legal business name", "hint": "exactly as registered" },
+    { "id": "entity", "label": "Business type", "options": ["LLC", "Corporation", "Sole proprietor"] },
+    { "id": "domain", "label": "Web address", "options": ["bunsandpattieshtx.com is fine", "I want another"], "other": "the one you want" },
+    { "id": "duns", "label": "D-U-N-S number", "hint": "when it arrives" },
+    { "id": "contact", "label": "Your email and mobile" },
+    { "id": "appleid", "label": "Apple ID email", "hint": "for the test app — add any staff who will test" },
+    { "id": "staff", "label": "Staff who work the window", "hint": "name and mobile, one per line", "long": true },
+    { "id": "where", "label": "Where the truck parks, and your hours", "long": true },
+    { "id": "square", "label": "Already use Square?", "options": ["Yes", "No"] },
+    { "id": "stamps", "label": "Stamp card: $15+ orders — 5 = free fries, 10 = free burger", "options": ["OK", "Change it"], "other": "what to change" },
+    { "id": "drink", "label": "Free drink for an Instagram follow, up to 1,000", "options": ["OK", "No"] },
+    { "id": "refunds", "label": "Who handles refunds and complaints" },
+    { "id": "story", "label": "Your story", "hint": "3–5 sentences, shown in the app", "long": true },
+    { "id": "reviews", "label": "3–5 Google reviews to show", "hint": "the text and the first name", "long": true },
+    { "id": "links", "label": "Your other links", "hint": "TikTok, Facebook, DoorDash, Uber Eats, Grubhub", "long": true }
+  ]
+}

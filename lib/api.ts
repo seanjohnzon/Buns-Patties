@@ -15,6 +15,7 @@ import { soldOutToday } from './availability';
 import { phoneDigits } from './phone';
 import { type Campaign, type CampaignAction, type CampaignClaim, type StampTier } from './campaigns';
 import { localStore } from './local';
+import type { IntakeState } from './intake';
 import { campaignStats, loyalty, ownerToday, placeTestOrder, productMix, type TestOrderInput } from './local/logic';
 import type { LoyaltyRaw, MixRow, TodayRaw } from './reporting';
 
@@ -503,4 +504,27 @@ export async function savePushToken(token: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from('profiles').update({ expo_push_token: token }).eq('id', user.id);
+}
+
+// ---------- client intake ----------
+// No sign-in: the private code in the link is the key, and the database only
+// lets the form read and write its own row (get_intake / submit_intake).
+
+export async function getIntake(code: string): Promise<IntakeState | null> {
+  if (!hasSupabase) return localStore().read('intake')[code] ?? null;
+  const { data, error } = await supabase.rpc('get_intake', { p_code: code });
+  if (error) throw error;
+  return data ? { answers: data.answers ?? {}, jobs: data.jobs ?? {}, submittedAt: data.submittedAt ?? null } : null;
+}
+
+/** Sends the form to us. `sent` is false in test mode, where it only saves on the device. */
+export async function submitIntake(code: string, s: Omit<IntakeState, 'submittedAt'>): Promise<{ sent: boolean; submittedAt: string }> {
+  if (!hasSupabase) {
+    const st = localStore(); const at = new Date().toISOString();
+    st.write('intake', { ...st.read('intake'), [code]: { ...s, submittedAt: at } });
+    return { sent: false, submittedAt: at };
+  }
+  const { data, error } = await supabase.rpc('submit_intake', { p_code: code, p_answers: s.answers, p_jobs: s.jobs });
+  if (error) throw error;
+  return { sent: true, submittedAt: data.submittedAt };
 }

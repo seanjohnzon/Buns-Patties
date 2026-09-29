@@ -35,7 +35,7 @@ About **$30–45/mo per client** on our side. Fixed agency base: $25 Supabase + 
 
 | # | Stage | Done when | Lead time |
 |---|---|---|---|
-| 0 | **Kickoff.** Send the client sheet (Universal Client Pack, filled in). He starts the slow things that day: D-U-N-S, Apple Organization, Google Organization, Google listing, Square. We run section 4. | sheet sent, section 4 done | day 0, ~2 hours ours |
+| 0 | **Kickoff.** Send the client his intake link (`/intake?c=<code>`: costs, his jobs with tick + notes, the answers — sent straight to us; `data/intake/<client>.json`). He starts the slow things that day: D-U-N-S, Apple Organization, Google Organization, Google listing, Square. We run section 4. | sheet sent, section 4 done | day 0, ~2 hours ours |
 | 1 | **Build.** Menu into `data/menu.seed.json` → `node scripts/build-seed.mjs`. Branding, campaigns. | QA Gate 0 green, Gate 1 in Expo Go | 2–4 days |
 | 2 | **Test app.** TestFlight on Samil's team (`SAMIL.md` — his Claude does it). The owner walks Gate 1 on his own phone. | owner has ticked Gate 1 | same day |
 | 3 | **SIT.** Supabase test project + Square sandbox + test sign-in codes. | QA Gates 2 and 3 green | 1–2 days |
@@ -53,7 +53,8 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 4. **Twilio:** subaccount `<Client> – prod` → Verify service (friendly name = the brand, **code length 6**, US only). Paste into Supabase → Phone → Twilio Verify. Raise Supabase's SMS limit from 30/hour.
 5. **Square Developer:** add this client's webhook URL(s) to our one app. Nothing else until he presses Allow.
 6. **Domain:** register at Porkbun in the client's legal name, `hello@` forwarding to his inbox, Netlify site from the repo (`npm run build:web`).
-7. **QA page:** start a run for the client.
+7. **Intake:** copy `data/intake/buns-and-patties.json` → `data/intake/<client>.json`, add its private code in `lib/intake-links.ts`, insert its row in `client_intake`, send him the link. Read answers: `select * from client_intake`.
+8. **QA page:** start a run for the client.
 
 ## 5. Client-facing, the whole time
 

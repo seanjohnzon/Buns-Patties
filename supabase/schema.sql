@@ -579,3 +579,40 @@ begin
   );
 end $$;
 
+
+-- ---------- client intake ----------
+-- The onboarding form a client fills in (app/intake.tsx): his jobs with a tick
+-- and notes, and the answers we need. Each client gets a row, and a private code
+-- in his link (/intake?c=<code>). Nobody can list or read the table; the form
+-- reads and writes its own row only through these two functions, by its code.
+-- We read everything from the dashboard: select * from client_intake;
+create table client_intake (
+  code text primary key,
+  business text not null,
+  answers jsonb not null default '{}',
+  jobs jsonb not null default '{}',          -- {"duns": {"done": true, "note": "requested Tue"}}
+  submitted_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+alter table client_intake enable row level security;
+
+create or replace function get_intake(p_code text)
+returns json language sql stable security definer set search_path = public as $$
+  select json_build_object('answers', answers, 'jobs', jobs, 'submittedAt', submitted_at)
+  from client_intake where code = p_code;
+$$;
+
+create or replace function submit_intake(p_code text, p_answers jsonb, p_jobs jsonb)
+returns json language plpgsql security definer set search_path = public as $$
+declare at timestamptz := now();
+begin
+  if pg_column_size(p_answers) + pg_column_size(p_jobs) > 200000 then raise exception 'too long'; end if;
+  update client_intake set answers = p_answers, jobs = p_jobs, submitted_at = at, updated_at = at where code = p_code;
+  if not found then raise exception 'this link is not right — ask us for a new one'; end if;
+  return json_build_object('submittedAt', at);
+end $$;
+
+grant execute on function get_intake(text) to anon, authenticated;
+grant execute on function submit_intake(text, jsonb, jsonb) to anon, authenticated;
+
+insert into client_intake (code, business) values ('bp-7f3k9q', 'Buns & Patties') on conflict (code) do nothing;
