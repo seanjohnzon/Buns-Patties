@@ -35,6 +35,14 @@
         "EXPO_PUBLIC_ENV": "uat"
       },
       "channel": "uat"
+    },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      },
+      "distribution": "internal",
+      "autoIncrement": false
     }
   },
   "submit": {
