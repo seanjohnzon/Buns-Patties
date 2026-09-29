@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { SQUARE_SCOPES, TAX_PERCENT, acceptSquareTotal, cents, e164, modSummary, orderIsPaid, squareBase, squareOrder, verifySquareSignature } from '../supabase/functions/_shared/square.ts';
+import { SQUARE_SCOPES, TAX_PERCENT, acceptSquareTotal, cents, e164, fullyRefunded, modSummary, orderIsPaid, squareBase, squareOrder, verifySquareSignature } from '../supabase/functions/_shared/square.ts';
 
 const order = {
   orderId: '3f2b6c1e-9a8d-4f7e-b1c2-0d9e8f7a6b5c',
@@ -114,4 +114,16 @@ test('sandbox unless told otherwise, so a test can never charge a real card', ()
 
 test('modSummary counts repeats', () => {
   assert.equal(modSummary(['BBQ', 'Ketchup', 'Ketchup']), 'BBQ, Ketchup ×2');
+});
+
+test('an order refunded back to nothing is not paid, whatever its tenders say', () => {
+  assert.equal(orderIsPaid({ tenders: [{ id: 't' }], net_amount_due_money: { amount: 0 }, refunds: [{ id: 'r' }], net_amounts: { total_money: { amount: 0 } } }), false);
+  assert.equal(orderIsPaid({ tenders: [{ id: 't' }], net_amount_due_money: { amount: 0 }, refunds: [{ id: 'r' }], net_amounts: { total_money: { amount: 500 } } }), true, 'a partial refund leaves it paid');
+});
+
+test('refunds that come in pieces count once they add up to the whole payment', () => {
+  assert.equal(fullyRefunded({ total_money: { amount: 2943 }, refunded_money: { amount: 1000 } }), false);
+  assert.equal(fullyRefunded({ total_money: { amount: 2943 }, refunded_money: { amount: 2943 } }), true);
+  assert.equal(fullyRefunded({ amount_money: { amount: 500 }, refunded_money: { amount: 500 } }), true);
+  assert.equal(fullyRefunded(null), false);
 });

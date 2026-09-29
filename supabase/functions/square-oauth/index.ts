@@ -48,12 +48,17 @@ Deno.serve(async (req) => {
   return page('Square connected', `App orders will be paid into ${business || 'your Square account'}${location?.name ? ` (${location.name})` : ''}. You can close this page.`);
 });
 
+/**
+ * Where the owner lands after Allow. Supabase serves HTML from functions as plain
+ * text, so the answer is shown by a page on the website (app/square-connected.tsx).
+ */
 function page(title: string, body: string) {
-  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-  return new Response(
-    `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>` +
-    `<body style="font-family:-apple-system,system-ui,sans-serif;padding:32px 20px;max-width:480px;margin:auto;color:#111">` +
-    `<h1 style="font-size:24px">${esc(title)}</h1><p style="font-size:17px;line-height:1.5">${esc(body)}</p></body>`,
-    { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-  );
+  const site = Deno.env.get('PUBLIC_SITE_URL');
+  if (site) {
+    const u = new URL(site + '/square-connected');
+    u.searchParams.set('title', title);
+    u.searchParams.set('msg', body);
+    return Response.redirect(u.toString(), 302);
+  }
+  return new Response(`${title}. ${body}`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }

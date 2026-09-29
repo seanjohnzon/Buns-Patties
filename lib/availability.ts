@@ -7,9 +7,14 @@
 export type Availability = { available?: boolean; soldOutUntil?: string | null };
 
 /** True while staff have it switched off. */
+/** The truck's calendar day (Houston), YYYY-MM-DD. A sold-out switch lasts until it ends. */
+export function truckDay(at = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+}
+
 export function isSoldOut(item: Availability, today = new Date()): boolean {
   if (!item.soldOutUntil) return false;
-  return item.soldOutUntil >= today.toISOString().slice(0, 10);
+  return item.soldOutUntil >= truckDay(today);
 }
 
 /** What a customer should actually see on the menu. */
@@ -20,7 +25,7 @@ export function isOrderable(item: Availability, today = new Date()): boolean {
 
 /** The date string staff writing "sold out" today should store. */
 export function soldOutToday(today = new Date()): string {
-  return today.toISOString().slice(0, 10);
+  return truckDay(today);
 }
 
 export type CheckoutBlock =

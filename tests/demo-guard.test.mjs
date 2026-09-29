@@ -50,3 +50,10 @@ test('the live website and the store app are never built in test mode', async ()
   assert.equal(test.extra.testMode, true);
   assert.equal(test.ios.bundleIdentifier, 'com.bunsandpatties.app.preview');
 });
+
+test('the TestFlight test app can never point at a live database', () => {
+  const eas = JSON.parse(readFileSync('eas.json', 'utf8'));
+  assert.equal(eas.build.preview.env.EXPO_PUBLIC_SUPABASE_URL, '', 'preview must blank the database URL');
+  assert.equal(eas.build.preview.environment, 'preview');
+  assert.equal(eas.build.uat.environment, 'production');
+});

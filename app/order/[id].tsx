@@ -1,7 +1,7 @@
 // Order status — live via Supabase realtime; kitchen taps advance it.
 import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Platform, ScrollView, View } from 'react-native';
+import { AppState, Platform, ScrollView, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { OrderStatusStepper } from '@/components/OrderStatusStepper';
 import { Body, Button, Card, H1, Muted, Row, Screen, money } from '@/components/ui';
@@ -12,13 +12,18 @@ import type { Order } from '@/lib/types';
 export default function OrderStatus() {
   const { id, paid } = useLocalSearchParams<{ id: string; paid?: string }>();
   const [order, setOrder] = useState<Order | null>(null);
+  const [missing, setMissing] = useState(false);
 
-  useEffect(() => {
-    getOrder(id).then(setOrder);
-    return subscribeOrder(id, setOrder);
+  const refresh = useCallback(() => {
+    getOrder(id).then((o) => { if (o) { setOrder(o); setMissing(false); } else setMissing(true); }).catch(() => setMissing(true));
   }, [id]);
-  // Coming back from the Square page: look again straight away.
-  useFocusEffect(useCallback(() => { getOrder(id).then((o) => o && setOrder(o)); }, [id]));
+  useEffect(() => { refresh(); return subscribeOrder(id, setOrder); }, [id, refresh]);
+  // Coming back from the Square page, or back to the app: look again straight away.
+  useFocusEffect(refresh);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') refresh(); });
+    return () => sub.remove();
+  }, [refresh]);
 
   // Back from the hosted payment page. The webhook usually lands first, but if
   // it has not yet, say something true rather than showing a stale status.
@@ -26,12 +31,23 @@ export default function OrderStatus() {
   const unpaid = !justPaid && order?.status === 'pending_payment';
   const cancelled = order?.status === 'cancelled';
 
-  function finishPaying() {
+  async function finishPaying() {
     if (!order?.checkoutUrl) return;
-    if (Platform.OS === 'web') Linking.openURL(order.checkoutUrl);
-    else WebBrowser.openBrowserAsync(order.checkoutUrl, { dismissButtonStyle: 'close' });
+    if (Platform.OS === 'web') { window.location.assign(order.checkoutUrl); return; }
+    await WebBrowser.openBrowserAsync(order.checkoutUrl, { dismissButtonStyle: 'close' });
+    refresh();
   }
 
+  // Paid in the app's payment sheet, Square lands here on the website, where this
+  // browser is not signed in. Say so instead of spinning.
+  if (!order && missing) {
+    return (
+      <Screen style={{ alignItems: 'center', justifyContent: 'center', padding: 24, gap: 8 }}>
+        <H1 style={{ textAlign: 'center' }}>{paid === '1' ? 'Payment received' : 'Order not found'}</H1>
+        <Muted style={{ textAlign: 'center' }}>{paid === '1' ? 'Close this page to go back to the app — your order is there.' : 'Open it from the Orders tab in the app.'}</Muted>
+      </Screen>
+    );
+  }
   if (!order) return <Screen style={{ alignItems: 'center', justifyContent: 'center' }}><Muted>Loading…</Muted></Screen>;
 
   return (

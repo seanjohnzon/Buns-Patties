@@ -4,56 +4,74 @@
 //
 //   - an app order still waiting on payment whose Square order is paid → open it
 //     (the trigger adds the stamp);
-//   - one abandoned for over an hour → close its payment link first (so it can
-//     never be paid later), then cancel it (the trigger hands back rewards);
+//   - one abandoned for over an hour → close its payment page first (so it can
+//     never be paid later), then cancel it (the trigger hands back its rewards);
+//   - a checkout that never got as far as Square → cancel it;
 //   - money Square took for an app order we have no row for → flagged.
 //
 // Square is the source of truth for money. We are the source of truth for food.
 // Run it on a schedule — see supabase/cron.sql.
 // Secrets: RECONCILE_SECRET, SQUARE_*, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 import { admin, json } from '../_shared/http.ts';
-import { ORDER_SOURCE, orderIsPaid, squareAuth, squareFetch } from '../_shared/square.ts';
+import { ORDER_SOURCE, SquareError, orderIsPaid, squareAuth, squareFetch } from '../_shared/square.ts';
 
 const ABANDONED_MIN = 60;
+const LOOKBACK_DAYS = 3;
 
 Deno.serve(async (req) => {
   if (req.headers.get('x-reconcile-secret') !== Deno.env.get('RECONCILE_SECRET')) {
     return new Response('no', { status: 401 });
   }
   const sb = admin();
-  const sq = await squareAuth(sb);
-  if (!sq) return json({ skipped: 'Square not connected' });
+  const fixed: string[] = [], closed: string[] = [], orphans: string[] = [], failed: string[] = [];
+  const since = new Date(Date.now() - LOOKBACK_DAYS * 864e5).toISOString();
+  const minutesOld = (iso: string) => (Date.now() - new Date(iso).getTime()) / 60000;
 
-  const fixed: string[] = [], closed: string[] = [], orphans: string[] = [];
-  const dayAgo = new Date(Date.now() - 864e5).toISOString();
+  const cancelRow = async (id: string) => {
+    const { error } = await sb.from('orders').update({ status: 'cancelled' }).eq('id', id).eq('status', 'pending_payment');
+    if (error) failed.push(`${id}: ${error.message}`); else closed.push(id);
+  };
+
   // Younger than two minutes and the customer may still be on the payment page.
   const cutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-
   const { data: pending, error } = await sb.from('orders')
     .select('id, square_order_id, square_payment_link_id, created_at')
-    .eq('status', 'pending_payment').not('square_order_id', 'is', null)
-    .lt('created_at', cutoff).gte('created_at', dayAgo);
+    .eq('status', 'pending_payment').lt('created_at', cutoff).gte('created_at', since);
   if (error) return json({ error: error.message }, 500);
 
-  for (const o of pending ?? []) {
+  // Checkouts that never reached Square (the function died half way).
+  for (const o of (pending ?? []).filter((x) => !x.square_order_id)) {
+    if (minutesOld(o.created_at) > 10) await cancelRow(o.id);
+  }
+
+  const sq = await squareAuth(sb);
+  if (!sq) return json({ skipped: 'Square not connected', closed, failed });
+
+  for (const o of (pending ?? []).filter((x) => x.square_order_id)) {
     let order: any;
     try { order = (await squareFetch(sq.base, sq.token, `/v2/orders/${o.square_order_id}`)).order; }
     catch { continue; }   // try again next sweep
 
     if (orderIsPaid(order)) {
       const paymentId = order.tenders?.[0]?.payment_id ?? order.tenders?.[0]?.id ?? null;
-      const { error: e } = await sb.from('orders').update({ status: 'received', square_payment_id: paymentId })
-        .eq('id', o.id).eq('status', 'pending_payment');
-      if (!e) fixed.push(o.id);
-    } else if (Date.now() - new Date(o.created_at).getTime() > ABANDONED_MIN * 60 * 1000) {
+      await sb.from('orders').update({ square_payment_id: paymentId, square_paid_at: new Date().toISOString() })
+        .eq('id', o.id).is('square_paid_at', null);
+      const { error: e } = await sb.from('orders').update({ status: 'received' }).eq('id', o.id).eq('status', 'pending_payment');
+      if (e) failed.push(`${o.id}: ${e.message}`); else fixed.push(o.id);
+    } else if (order?.state === 'CANCELED') {
+      await cancelRow(o.id);                 // Square already closed it
+    } else if (minutesOld(o.created_at) > ABANDONED_MIN) {
       // Close the door before cancelling, or they could pay for a dead order.
+      // A link that is already gone (404) counts as closed.
       try {
         if (o.square_payment_link_id) {
           await squareFetch(sq.base, sq.token, `/v2/online-checkout/payment-links/${o.square_payment_link_id}`, { method: 'DELETE' });
         }
-        await sb.from('orders').update({ status: 'cancelled' }).eq('id', o.id).eq('status', 'pending_payment');
-        closed.push(o.id);
-      } catch { /* link still open — leave the order, try again next sweep */ }
+        await cancelRow(o.id);
+      } catch (e) {
+        if (e instanceof SquareError && e.status === 404) await cancelRow(o.id);
+        // otherwise the link may still be open — leave the order, try next sweep
+      }
     }
   }
 
@@ -61,7 +79,7 @@ Deno.serve(async (req) => {
   // the truck's own Square reader are not ours, so only orders whose source is
   // the app count.
   try {
-    const pays = await squareFetch(sq.base, sq.token, `/v2/payments?begin_time=${encodeURIComponent(dayAgo)}&location_id=${sq.locationId}&limit=100`);
+    const pays = await squareFetch(sq.base, sq.token, `/v2/payments?begin_time=${encodeURIComponent(since)}&location_id=${sq.locationId}&limit=100`);
     const ids = [...new Set((pays.payments ?? []).filter((p: any) => p.status === 'COMPLETED' && p.order_id).map((p: any) => p.order_id as string))];
     if (ids.length) {
       const { data: ours } = await sb.from('orders').select('square_order_id').in('square_order_id', ids);
@@ -74,12 +92,12 @@ Deno.serve(async (req) => {
     }
   } catch { /* the next sweep will look again */ }
 
-  if (fixed.length || orphans.length) {
+  if (fixed.length || orphans.length || failed.length) {
     await sb.from('webhook_events').upsert({
       id: `reconcile-${Date.now()}`, type: 'reconcile',
       received_at: new Date().toISOString(), handled_at: new Date().toISOString(),
-      error: orphans.length ? `app payments with no order: ${orphans.join(', ')}` : null,
+      error: [orphans.length ? `app payments with no order: ${orphans.join(', ')}` : '', failed.join('; ')].filter(Boolean).join(' | ') || null,
     });
   }
-  return json({ checked: pending?.length ?? 0, fixed, closed, orphans });
+  return json({ checked: pending?.length ?? 0, fixed, closed, orphans, failed });
 });

@@ -37,7 +37,7 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
   if (!truck?.is_open) return { error: 'The truck is closed right now.', status: 409 };
 
   const { data: items } = await sb.from('menu_items')
-    .select('id, price, modifier_groups, available, sold_out_until')
+    .select('id, name, price, modifier_groups, available, sold_out_until')
     .in('id', lines.map((l: any) => l.menuItemId));
 
   // Entitlements, read fresh from the database — never from the request.
@@ -51,7 +51,8 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
   const usedCampaigns = new Set<string>();          // one-off offers spent by this order
   const stampSpend: Record<string, number> = {};    // stamp cards spent by this order
   const priced: any[] = [];
-  const today = new Date().toISOString().slice(0, 10);
+  // The truck's day in Houston, same as lib/availability.ts truckDay().
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
   for (const l of lines) {
     const it = items?.find((i: any) => i.id === l.menuItemId);
@@ -109,7 +110,9 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
     subtotal += unit * qty;
     priced.push({
       menu_item_id: it.id,
-      name: String(l.name ?? it.id).slice(0, 80),
+      // The name comes from the menu, never from the phone: the kitchen and the
+      // owner's Square must say what was actually priced.
+      name: (String(it.name ?? it.id) + (campaignId ? ' (on us)' : '')).slice(0, 80),
       qty, unit_price: unit, mods,
       note: l.note ? String(l.note).slice(0, 200) : null,
       campaign_id: campaignId,
@@ -154,10 +157,17 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
 
   // Spend the claims, conditional on still being unspent, so a retried request
   // cannot hand the same offer out twice.
+  // Two checkouts at once: only one gets the row back; the other is cancelled
+  // (which also hands back anything it had already spent).
   for (const campaignId of usedCampaigns) {
-    await sb.from('campaign_claims')
+    const { data: took } = await sb.from('campaign_claims')
       .update({ used_order_id: order.id, used_at: new Date().toISOString() })
-      .eq('campaign_id', campaignId).eq('user_id', userId).is('used_at', null);
+      .eq('campaign_id', campaignId).eq('user_id', userId).is('used_at', null)
+      .select('campaign_id');
+    if (!took?.length) {
+      await sb.from('orders').update({ status: 'cancelled', stamp_spend: spent }).eq('id', order.id);
+      return { error: 'that offer has already been used', status: 403 };
+    }
   }
 
   return {

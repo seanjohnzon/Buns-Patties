@@ -4,7 +4,7 @@
 // reward); only real extras on them are charged.
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
 import { DEMO_ALLOWED, createCheckout, demoPlaceOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
@@ -83,9 +83,9 @@ export default function Cart() {
       // Square hosts the payment page. On the web we go there and Square sends
       // them back to the order screen; in the app it opens over the top, and the
       // order screen underneath flips to "received" the moment Square tells us.
-      if (Platform.OS === 'web') { await Linking.openURL(res.checkoutUrl); return; }
-      toOrder();
+      if (Platform.OS === 'web') { window.location.assign(res.checkoutUrl); return; }
       await WebBrowser.openBrowserAsync(res.checkoutUrl, { dismissButtonStyle: 'close' });
+      toOrder();
     } catch (e: any) {
       Alert.alert('Error', e.message ?? String(e));
     } finally { setBusy(false); }

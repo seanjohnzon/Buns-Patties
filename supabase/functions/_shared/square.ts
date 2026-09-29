@@ -90,10 +90,22 @@ export function e164(digits: string | null | undefined) {
 }
 
 /** Has this Square order been paid for in full? */
-export function orderIsPaid(order: { tenders?: unknown[]; net_amount_due_money?: { amount?: number } } | null | undefined) {
+export function orderIsPaid(order: {
+  tenders?: unknown[]; net_amount_due_money?: { amount?: number };
+  refunds?: unknown[]; net_amounts?: { total_money?: { amount?: number } };
+} | null | undefined) {
   if (!order) return false;
+  // Refunded back to nothing: not a paid order, whatever the tenders say.
+  if ((order.refunds?.length ?? 0) > 0 && order.net_amounts?.total_money?.amount === 0) return false;
   const due = order.net_amount_due_money?.amount;
   return (order.tenders?.length ?? 0) > 0 && (due === undefined || due === 0);
+}
+
+/** Has this payment been refunded in full (across however many refunds)? */
+export function fullyRefunded(payment: { total_money?: { amount?: number }; amount_money?: { amount?: number }; refunded_money?: { amount?: number } } | null | undefined) {
+  if (!payment) return false;
+  const total = payment.total_money?.amount ?? payment.amount_money?.amount ?? 0;
+  return total > 0 && (payment.refunded_money?.amount ?? 0) >= total;
 }
 
 /**

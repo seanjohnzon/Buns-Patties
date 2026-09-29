@@ -113,6 +113,7 @@ create table orders (
   square_order_id text unique,
   square_payment_link_id text,
   square_payment_id text unique,
+  square_paid_at timestamptz,     -- when Square said it was paid; set even if opening the order fails
   checkout_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -303,6 +304,25 @@ create trigger keep_one_owner before update on profiles
   for each row when (old.role is distinct from new.role)
   execute function protect_last_owner();
 
+-- Guard rail: "update own profile" lets people edit their own row, so the row
+-- itself must refuse the columns that are not theirs to change. A role changes
+-- only when an owner changes SOMEONE ELSE's role (or from the SQL editor / server,
+-- where there is no signed-in user). The phone number is set by sign-in, never edited.
+create or replace function protect_profile_columns() returns trigger
+  language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then return new; end if;   -- SQL editor, service role
+  if new.role is distinct from old.role and (not is_owner() or new.id = auth.uid()) then
+    raise exception 'only the owner can change someone''s role';
+  end if;
+  if new.phone is distinct from old.phone then
+    raise exception 'the phone number comes from sign-in';
+  end if;
+  return new;
+end $$;
+create trigger protect_profile_columns before update on profiles
+  for each row execute function protect_profile_columns();
+
 -- ---------- feedback ----------
 -- UAT is real customers, so the point of it is what they tell you. Captured in
 -- the app rather than chased on Instagram, and tied to the build it came from
@@ -350,8 +370,9 @@ create table webhook_events (
 alter table webhook_events enable row level security;
 create policy "owner reads webhook events" on webhook_events for select using (is_owner());
 
--- Orders that took money but never reached the kitchen. Should always be empty.
--- The staff screen shows these so a human catches what automation missed.
+-- Orders Square says are PAID that never reached the kitchen. Should always be
+-- empty. Only orders with square_paid_at count — an unpaid checkout is not "stuck",
+-- and must never be one tap away from the kitchen.
 create or replace function stuck_orders()
 returns table (id uuid, created_at timestamptz, total numeric, square_order_id text)
 language plpgsql stable security definer set search_path = public as $$
@@ -361,7 +382,7 @@ begin
     select o.id, o.created_at, o.total, o.square_order_id
     from orders o
     where o.status = 'pending_payment'
-      and o.square_order_id is not null
+      and o.square_paid_at is not null
       and o.created_at < now() - interval '5 minutes'
       and o.created_at > now() - interval '2 days'
     order by o.created_at;

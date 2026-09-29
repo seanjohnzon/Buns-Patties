@@ -158,9 +158,20 @@ export type OrderInput = {
  */
 export async function createCheckout(input: OrderInput): Promise<{ orderId: string; checkoutUrl?: string; free?: boolean }> {
   if (!hasSupabase) throw new Error('No database configured — see README');
-  const { data, error } = await supabase.functions.invoke('create-checkout', { body: input });
+  return invoke('create-checkout', input as unknown as Record<string, any>);
+}
+
+/**
+ * Call a server function and, when it refuses, show its own words ("The truck is
+ * closed right now") rather than "Edge Function returned a non-2xx status code".
+ */
+async function invoke(name: string, body: Record<string, any>) {
+  const { data, error } = await supabase.functions.invoke(name, { body });
   if (data?.error) throw new Error(data.error);
-  if (error) throw error;
+  if (error) {
+    const said = await (error as any).context?.json?.().catch(() => null);
+    throw new Error(said?.error ?? error.message);
+  }
   return data;
 }
 
@@ -230,10 +241,7 @@ export async function getSquareStatus(): Promise<SquareStatus> {
 /** The squareup.com page where the owner signs in and presses Allow. */
 export async function squareConnectUrl(): Promise<string> {
   if (!hasSupabase) throw new Error('Connect the database first — Square is linked to it.');
-  const { data, error } = await supabase.functions.invoke('square-connect', { body: {} });
-  if (data?.error) throw new Error(data.error);
-  if (error) throw error;
-  return data.url;
+  return (await invoke('square-connect', {})).url;
 }
 
 // ---------- owner: people ----------
@@ -344,7 +352,8 @@ export async function getStuckOrders(): Promise<StuckOrder[]> {
 /** Staff pulling a stuck order onto the board by hand, once they can see the payment went through. */
 export async function releaseStuckOrder(orderId: string) {
   if (!hasSupabase) return;
-  const { error } = await supabase.from('orders').update({ status: 'received' }).eq('id', orderId).eq('status', 'pending_payment');
+  // Only an order Square has confirmed as paid can be put on the board by hand.
+  const { error } = await supabase.from('orders').update({ status: 'received' }).eq('id', orderId).eq('status', 'pending_payment').not('square_paid_at', 'is', null);
   if (error) throw error;
 }
 

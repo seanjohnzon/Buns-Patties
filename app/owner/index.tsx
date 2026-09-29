@@ -3,9 +3,9 @@
 // switches sit right under the takings, because mid-service that is the one
 // thing he needs in two taps.
 import { Link } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, AppState, Platform, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Body, Button, Card, H2, Muted, Row, Screen, money } from '@/components/ui';
 import * as WebBrowser from 'expo-web-browser';
 import { getMenu, getOwnerLoyalty, getOwnerToday, getProductMix, getSquareStatus, isSoldOut, setSoldOut, squareConnectUrl, type SquareStatus } from '@/lib/api';
@@ -38,7 +38,12 @@ export default function OwnerHome() {
   // The one-time Allow button: opens Square, he signs in and allows, Square
   // sends him back to a "connected" page. Nothing is typed or sent to us.
   async function connectSquare() {
-    try { await WebBrowser.openBrowserAsync(await squareConnectUrl()); load(); }
+    try {
+      const url = await squareConnectUrl();
+      if (Platform.OS === 'web') { window.location.assign(url); return; }
+      await WebBrowser.openBrowserAsync(url);
+      load();
+    }
     catch (e: any) { Alert.alert('Could not open Square', e.message ?? String(e)); }
   }
 
@@ -48,6 +53,10 @@ export default function OwnerHome() {
     catch (e: any) { setOff((o) => ({ ...o, [id]: !soldOut })); Alert.alert('Could not save', e.message ?? String(e)); }
   }
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') load(); });
+    return () => sub.remove();
+  }, [load]);
 
   if (!today) return <Screen style={{ alignItems: 'center', justifyContent: 'center' }}><Muted>Loading…</Muted></Screen>;
 

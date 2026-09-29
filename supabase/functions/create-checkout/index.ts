@@ -23,24 +23,27 @@ Deno.serve(async (req) => {
   const built = await buildOrder(sb, user.id, body);
   if ('error' in built) return json({ error: built.error }, built.status);
 
-  // Nothing to pay (the free drink on its own): straight onto the kitchen board.
-  // Safe because the total was worked out here from verified rewards.
-  if (built.total === 0) {
-    await sb.from('orders').update({ status: 'received' }).eq('id', built.orderId).eq('status', 'pending_payment');
-    return json({ orderId: built.orderId, free: true });
-  }
+  // From here on, ANY failure cancels the order, which hands back the stamps and
+  // offers it spent (on_order_paid trigger). Nothing is left half-made.
+  const cancel = async (why: string, status = 502) => {
+    await sb.from('orders').update({ status: 'cancelled' }).eq('id', built.orderId).eq('status', 'pending_payment');
+    return json({ error: why }, status);
+  };
 
-  const cancel = (why: string, status = 502) =>
-    sb.from('orders').update({ status: 'cancelled' }).eq('id', built.orderId).eq('status', 'pending_payment')
-      .then(() => json({ error: why }, status));
-
-  const sq = await squareAuth(sb);
-  if (!sq) return cancel('Card payments are not connected yet. Please pay at the window.', 409);
-
-  const site = Deno.env.get('PUBLIC_SITE_URL') ?? '';
-  let link: any;
   try {
-    link = await squareFetch(sq.base, sq.token, '/v2/online-checkout/payment-links', {
+    // Nothing to pay (the free drink on its own): straight onto the kitchen board.
+    // Safe because the total was worked out here from verified rewards.
+    if (built.total === 0) {
+      const { error } = await sb.from('orders').update({ status: 'received' }).eq('id', built.orderId).eq('status', 'pending_payment');
+      if (error) return cancel(`Could not place the order: ${error.message}`, 500);
+      return json({ orderId: built.orderId, free: true });
+    }
+
+    const sq = await squareAuth(sb);
+    if (!sq) return cancel('Card payments are not connected yet. Please pay at the window.', 409);
+
+    const site = Deno.env.get('PUBLIC_SITE_URL') ?? '';
+    const link = await squareFetch(sq.base, sq.token, '/v2/online-checkout/payment-links', {
       body: {
         idempotency_key: built.orderId,
         order: squareOrder({ orderId: built.orderId, lines: built.lines, tip: built.tip, pickupName: built.pickupName, pickupAt: built.pickupAt }, sq.locationId),
@@ -49,28 +52,28 @@ Deno.serve(async (req) => {
         payment_note: `App order for ${built.pickupName ?? 'pickup'} (${built.orderId.slice(0, 8)})`,
       },
     });
+
+    // Square adds the tax itself; take its figures (they are what the card is
+    // charged) as long as they agree with ours to the cent or two.
+    const sqOrder = link?.related_resources?.orders?.[0];
+    const sqTotal = sqOrder?.total_money?.amount;
+    if (typeof sqTotal === 'number' && !acceptSquareTotal(built.total, sqTotal)) {
+      return cancel(`Totals disagree (ours ${built.total}, Square ${sqTotal / 100}). Nothing was charged.`, 500);
+    }
+
+    const { error } = await sb.from('orders').update({
+      square_order_id: link.payment_link.order_id,
+      square_payment_link_id: link.payment_link.id,
+      checkout_url: link.payment_link.url,
+      ...(typeof sqTotal === 'number' ? {
+        total: sqTotal / 100,
+        tax: (sqOrder.total_tax_money?.amount ?? Math.round(built.tax * 100)) / 100,
+      } : {}),
+    }).eq('id', built.orderId);
+    if (error) return cancel(`Could not save the payment link: ${error.message}`, 500);
+
+    return json({ orderId: built.orderId, checkoutUrl: link.payment_link.url });
   } catch (e) {
     return cancel(`Could not start the payment: ${(e as Error).message}`);
   }
-
-  // Square adds the tax itself; take its figures (they are what the card is
-  // charged) as long as they agree with ours to the cent or two.
-  const sqOrder = link?.related_resources?.orders?.[0];
-  const sqTotal = sqOrder?.total_money?.amount;
-  if (typeof sqTotal === 'number' && !acceptSquareTotal(built.total, sqTotal)) {
-    return cancel(`Totals disagree (ours ${built.total}, Square ${sqTotal / 100}). Nothing was charged.`, 500);
-  }
-
-  const { error } = await sb.from('orders').update({
-    square_order_id: link.payment_link.order_id,
-    square_payment_link_id: link.payment_link.id,
-    checkout_url: link.payment_link.url,
-    ...(typeof sqTotal === 'number' ? {
-      total: sqTotal / 100,
-      tax: (sqOrder.total_tax_money?.amount ?? Math.round(built.tax * 100)) / 100,
-    } : {}),
-  }).eq('id', built.orderId);
-  if (error) return cancel(`Could not save the payment link: ${error.message}`, 500);
-
-  return json({ orderId: built.orderId, checkoutUrl: link.payment_link.url });
 });

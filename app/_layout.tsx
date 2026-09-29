@@ -27,6 +27,7 @@ export default function RootLayout() {
       <Stack.Screen name="owner" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ presentation: 'modal', title: 'Sign in' }} />
       <Stack.Screen name="qr" options={{ headerShown: false }} />
+      <Stack.Screen name="square-connected" options={{ headerShown: false }} />
       <Stack.Screen name="demo" options={{ headerShown: false }} />
       <Stack.Screen name="feedback" options={{ presentation: 'modal', title: '' }} />
     </Stack>

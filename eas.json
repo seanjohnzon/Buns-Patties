@@ -15,15 +15,19 @@
       "distribution": "store",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_ENV": "sandbox"
-      }
+        "EXPO_PUBLIC_ENV": "sandbox",
+        "EXPO_PUBLIC_SUPABASE_URL": "",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": ""
+      },
+      "environment": "preview"
     },
     "sit": {
       "distribution": "store",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_ENV": "sit"
-      }
+      },
+      "environment": "preview"
     },
     "uat": {
       "distribution": "store",
@@ -31,7 +35,8 @@
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_ENV": "uat"
-      }
+      },
+      "environment": "production"
     },
     "preview-simulator": {
       "extends": "preview",
