@@ -8,7 +8,7 @@ import seed from '@/data/menu.seed.json';
 import { supabase, hasSupabase } from './supabase';
 
 /** Test mode (no real database) is for development and test builds only. See getProfile. */
-export const DEMO_ALLOWED = __DEV__ || process.env.EXPO_PUBLIC_ENV === 'sandbox';
+export const DEMO_ALLOWED = __DEV__ || process.env.EXPO_PUBLIC_ENV === 'sandbox' || Constants.expoConfig?.extra?.testMode === true;
 import type { Category, MenuItem, ModifierGroup, Order, Profile, Role, Testimonial, TruckStatus } from './types';
 export { isOrderable, isSoldOut } from './availability';
 import { soldOutToday } from './availability';

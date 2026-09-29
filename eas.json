@@ -1,33 +1,51 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "sandbox": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_ENV": "sandbox" }
+      "env": {
+        "EXPO_PUBLIC_ENV": "sandbox"
+      }
     },
     "preview": {
       "distribution": "store",
       "autoIncrement": true,
-      "env": { "APP_VARIANT": "preview", "EXPO_PUBLIC_ENV": "sandbox" },
+      "env": {
+        "EXPO_PUBLIC_ENV": "sandbox"
+      },
       "channel": "preview"
     },
     "sit": {
       "distribution": "store",
       "autoIncrement": true,
-      "env": { "APP_VARIANT": "preview", "EXPO_PUBLIC_ENV": "sit" },
+      "env": {
+        "EXPO_PUBLIC_ENV": "sit"
+      },
       "channel": "sit"
     },
     "uat": {
       "distribution": "store",
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_ENV": "uat" },
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_ENV": "uat"
+      },
       "channel": "uat"
     }
   },
   "submit": {
-    "preview": { "ios": {} },
-    "sit": { "ios": {} },
-    "uat": { "ios": {} }
+    "preview": {
+      "ios": {}
+    },
+    "sit": {
+      "ios": {}
+    },
+    "uat": {
+      "ios": {}
+    }
   }
 }
