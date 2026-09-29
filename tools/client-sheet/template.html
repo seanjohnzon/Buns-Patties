@@ -1,0 +1,321 @@
+<title>Client Setup Template</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Staatliches&family=Karla:wght@400;600;700&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --paper:#FAF8F5; --card:#FFFFFF; --ink:#16120F; --ink2:#5E554E; --ink3:#8C8279;
+    --line:#E4DCD2; --cheese:#C77F05; --heat:#C1322B; --ok:#2C6E49; --tint:#F2EEE9;
+    --display:"Staatliches","Haettenschweiler","Arial Narrow",sans-serif;
+    --body:"Karla","Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --paper:#121010; --card:#1C1918; --ink:#F4EFE9; --ink2:#A79C92; --ink3:#7E746B;
+      --line:#332D29; --cheese:#F0B23C; --heat:#E4645C; --ok:#6BBF8A; --tint:#231F1E;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:#121010; --card:#1C1918; --ink:#F4EFE9; --ink2:#A79C92; --ink3:#7E746B;
+    --line:#332D29; --cheese:#F0B23C; --heat:#E4645C; --ok:#6BBF8A; --tint:#231F1E;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;padding-inline:16px;padding-block:30px 70px;}
+  .wrap{max-width:760px;margin-inline:auto;}
+  h1{font-family:var(--display);font-size:clamp(32px,8vw,54px);line-height:.95;margin:0 0 4px;}
+  .kicker{font-family:var(--display);letter-spacing:.15em;font-size:12px;color:var(--ink2);}
+  .lede{color:var(--ink2);margin:8px 0 0;max-width:60ch;}
+  a{color:inherit;}
+
+  .band{background:var(--ink);color:var(--paper);font-family:var(--display);font-size:clamp(18px,4.5vw,24px);letter-spacing:.04em;padding:8px 14px;margin:38px 0 4px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .band .sub{font-size:12px;letter-spacing:.08em;opacity:.75;}
+  .band.hot{background:var(--heat);}
+
+  .task{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px 17px;margin-top:12px;}
+  .task.you{border-left:5px solid var(--heat);}
+  .task.us{border-left:5px solid var(--ink3);}
+  .head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:3px;}
+  .num{font-family:var(--display);font-size:24px;color:var(--cheese);line-height:1;font-variant-numeric:tabular-nums;}
+  h4{font-family:var(--display);font-size:19px;letter-spacing:.03em;margin:0;flex:1;min-width:0;}
+  .who{font-family:var(--display);font-size:11px;letter-spacing:.09em;border-radius:3px;padding:2px 8px;white-space:nowrap;}
+  .who.you{background:var(--heat);color:#fff;}
+  .who.us{background:var(--tint);color:var(--ink2);border:1px solid var(--line);}
+  .why{font-size:14.5px;color:var(--ink2);margin:6px 0 0;}
+  .why b{color:var(--ink);}
+
+  .go{display:inline-block;margin-top:11px;background:var(--ink);color:var(--paper);font-family:var(--display);letter-spacing:.05em;font-size:14px;padding:9px 15px;border-radius:6px;text-decoration:none;word-break:break-word;}
+
+  ol.steps,ul.steps{margin:11px 0 0;padding-left:20px;display:grid;gap:5px;}
+  .steps li{font-size:14.5px;}
+  .steps b{background:var(--tint);padding:1px 5px;border-radius:3px;}
+
+  .stop{background:var(--tint);border-left:4px solid var(--cheese);border-radius:0 6px 6px 0;padding:10px 13px;margin-top:11px;font-size:14px;}
+  .stop b.t{font-family:var(--display);letter-spacing:.05em;display:block;font-size:12.5px;margin-bottom:3px;}
+  .stop.safe{border-left-color:var(--ok);}
+  .meta{font-size:12px;color:var(--ink3);margin-top:9px;font-family:var(--display);letter-spacing:.07em;}
+
+  .email{font-family:var(--mono);font-size:15px;color:var(--ink);font-weight:700;}
+  .mail{background:var(--card);border:2px dashed var(--line);border-radius:8px;padding:15px 17px;margin-top:12px;font-family:var(--mono);font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--ink);}
+
+  .can{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:11px;}
+  .can div{background:var(--tint);border-radius:6px;padding:10px 12px;font-size:13.5px;}
+  .can b{font-family:var(--display);letter-spacing:.05em;font-size:12.5px;display:block;margin-bottom:4px;}
+  .can ul{margin:0;padding-left:16px;display:grid;gap:3px;}
+
+  .scroll{overflow-x:auto;margin-top:16px;}
+  table{border-collapse:collapse;width:100%;font-size:15px;min-width:min(100%,440px);}
+  th,td{text-align:left;padding:9px 14px 9px 0;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-family:var(--display);font-weight:400;letter-spacing:.08em;font-size:12px;color:var(--ink2);border-bottom:2px solid var(--cheese);}
+  td.r,th.r{text-align:right;padding-right:0;white-space:nowrap;}
+
+  .fill{border-bottom:2px dotted var(--cheese);color:var(--cheese);font-weight:700;}
+  .internal{margin-top:46px;background:var(--tint);border-radius:8px;padding:18px 20px;}
+  .internal h3{font-family:var(--display);font-size:17px;letter-spacing:.06em;margin:0 0 10px;color:var(--ink2);}
+  .internal li{font-size:14px;color:var(--ink2);}
+  .internal ul{margin:0;padding-left:18px;display:grid;gap:7px;}
+  .internal b{color:var(--ink);}
+  .note{margin-top:34px;border-top:2px solid var(--line);padding-top:13px;color:var(--ink2);font-size:14px;}
+  .note b{color:var(--ink);}
+  @media (max-width:480px){ .can{grid-template-columns:1fr;} }
+
+  .costs td{font-size:14.5px;}
+  .costs td.amt{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .costs .who2{color:var(--ink3);font-size:13px;}
+  .fine{font-size:13px;color:var(--ink2);margin-top:10px;}
+  .done{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);letter-spacing:.06em;font-size:13px;color:var(--ink2);cursor:pointer;user-select:none;padding:4px 2px;}
+  .done input{width:24px;height:24px;accent-color:var(--ok);margin:0;cursor:pointer;}
+  .task.is-done{opacity:.55;}
+  .task.is-done h4{text-decoration:line-through;}
+  .progress{font-family:var(--display);letter-spacing:.08em;font-size:13px;color:var(--ok);margin-top:10px;}
+  .form{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px 17px;margin-top:12px;display:grid;gap:14px;}
+  .form label.q{display:grid;gap:5px;font-size:14.5px;color:var(--ink);font-weight:600;}
+  .form .hint{font-weight:400;color:var(--ink3);font-size:13px;}
+  .form input[type=text],.form input[type=email],.form input[type=tel],.form select,.form textarea{font:inherit;font-weight:400;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px 11px;width:100%;}
+  .form textarea{min-height:76px;resize:vertical;}
+  .choice{display:flex;gap:16px;flex-wrap:wrap;font-weight:400;}
+  .choice label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;}
+  .choice input{width:20px;height:20px;accent-color:var(--ok);margin:0;}
+  .send{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:4px;}
+  .send button{font-family:var(--display);letter-spacing:.06em;font-size:16px;background:var(--ok);color:#fff;border:0;border-radius:6px;padding:12px 18px;cursor:pointer;}
+  .send .ok{color:var(--ok);font-weight:700;font-size:14px;}
+  #answersOut{display:none;width:100%;min-height:160px;font-family:var(--mono);font-size:13px;}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="kicker"><span class="fill">BUSINESS</span> &middot; OPENING <span class="fill">DATE</span></span>
+    <h1>What We Need</h1>
+    <p class="lede">Ten short jobs, all in your name. Everything else is ours.</p>
+  </header>
+
+  <div class="stop" style="margin-top:20px;border-left-color:var(--heat)">
+    <b class="t">ADD THIS EMAIL TO EVERY ACCOUNT</b>
+    <span class="email"><span class="fill">OUR EMAIL</span></span><br>
+    Never send us a password, or any Square code starting <b>EAAA</b> or <b>sq0</b>.
+  </div>
+
+  
+  <h2 class="band"><span>WHAT IT COSTS YOU</span><span class="sub">NOTHING ELSE, EVER</span></h2>
+  <div class="scroll"><table class="costs"><thead><tr><th>What</th><th class="r">Cost</th></tr></thead><tbody>
+    <tr><td>Apple Developer — needed for the iPhone app<br><span class="who2">Paid to: Apple</span></td><td class="r amt">$99 / year</td></tr>
+    <tr><td>Google Play — needed for the Android app<br><span class="who2">Paid to: Google</span></td><td class="r amt">$25 once</td></tr>
+    <tr><td>Card payments on app and website orders<br><span class="who2">Paid to: Square, taken from each payment — no monthly fee</span></td><td class="r amt">2.9% + 30¢ per order</td></tr>
+    <tr><td>Web address (<span class="fill">DOMAIN</span>)<br><span class="who2">Paid to: us — registered in your business name</span></td><td class="r amt">about $12 / year</td></tr>
+    <tr><td>Running the app: database, sign-in texts, website<br><span class="who2">Paid to: us, <span class="fill">at cost / our fee</span></span></td><td class="r amt">about $30–45 / month</td></tr>
+  </tbody></table></div>
+  <p class="fine">Apple and Google take <b>no commission on food orders</b> (they only charge on digital goods). Your Square reader fees in person don’t change.</p>
+  <p class="progress" id="progress"></p>
+
+  <!-- ============ TODAY ============ -->
+  <h2 class="band hot"><span>TODAY</span><span class="sub">EACH ONE STARTS A WAIT WE CANNOT SHORTEN</span></h2>
+
+  <div class="task you">
+    <div class="head"><span class="num">1</span><h4>Reply with three things</h4><label class="done"><input type="checkbox" data-job="1"> DONE</label></div>
+    <ol class="steps">
+      <li>Your <b>legal business name</b>, exactly as registered.</li>
+      <li><b>LLC / corporation / sole proprietor?</b> Apple and Google treat these differently.</li>
+      <li>Web address: we suggest <b><span class="fill">DOMAIN</span></b> &mdash; say yes or name another. <span class="fill">(Note which obvious name is taken and by whom.)</span></li>
+    </ol>
+    <p class="why" style="margin-top:9px">We then register it and set up <b>hello@<span class="fill">DOMAIN</span></b>, which you need for job 5. Apple rejects businesses without their own website and matching email.</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">2</span><h4>D-U-N-S number</h4><label class="done"><input type="checkbox" data-job="2"> DONE</label></div>
+    <a class="go" href="https://developer.apple.com/enroll/duns-lookup/">developer.apple.com/enroll/duns-lookup</a>
+    <p class="why">Free. Apple and Google both need it, so jobs 5 and 6 wait on it. Search your legal name; request one if it's not there. Forward it to us when it arrives.</p>
+    <div class="stop">
+      <b class="t">MUST MATCH LATER, LETTER FOR LETTER</b>
+      A missing &ldquo;LLC&rdquo; or a shortened name counts as a different business. A mismatch costs weeks.
+    </div>
+    <p class="meta">UP TO 5 WORKING DAYS, THEN 2 MORE FOR APPLE TO SEE IT</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">3</span><h4>Google Maps listing</h4><label class="done"><input type="checkbox" data-job="3"> DONE</label></div>
+    <a class="go" href="https://business.google.com/">business.google.com</a>
+    <p class="why"><span class="fill">What is wrong with theirs — wrong address, marked closed, no hours. Temporarily closed hides it from search entirely.</span> Fix the address, drag the pin, add hours. Then: three dots &rarr; <b>Business Profile settings</b> &rarr; <b>People and access</b> &rarr; <b>Add</b> &rarr; our email &rarr; <b>Manager</b>.</p>
+    <div class="stop">
+      <b class="t">THE VERIFICATION VIDEO</b>
+      One unedited take on site: your signage, the surroundings, and you working. Rejected videos restart the wait.
+    </div>
+    <p class="meta"><span class="fill">THEIR REVIEW COUNT</span> LIVES ON THIS LISTING</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">4</span><h4>Square</h4><label class="done"><input type="checkbox" data-job="4"> DONE</label></div>
+    <a class="go" href="https://squareup.com/signup">squareup.com/signup</a>
+    <p class="why"><b>Already use Square? Skip this.</b> If not: sign up, business type <b><span class="fill">Food truck / Restaurant</span></b>, deposits to the <b>business</b> bank account.</p>
+    <p class="why" style="margin-top:8px">On <span class="fill">DAY</span> we open one Square page on your phone together: check it says <b>squareup.com</b>, sign in, press <b>Allow</b>. That is all the access we need.</p>
+    <p class="why" style="margin-top:8px">Money lands in your Square account as today. We <b>cannot touch your bank, move money out, or see your password</b>. To cut us off: Square Dashboard &rarr; <b>Settings</b> &rarr; <b>App integrations</b> &rarr; &middot;&middot;&middot; &rarr; <b>Disconnect app</b>.</p>
+    <p class="meta">2.9% + 30&cent; PER APP ORDER &middot; NO MONTHLY FEE</p>
+  </div>
+
+  <!-- ============ WHEN D-U-N-S ARRIVES ============ -->
+  <h2 class="band hot"><span>THE DAY YOUR D-U-N-S ARRIVES</span><span class="sub">BOTH, SAME DAY</span></h2>
+
+  <div class="task you">
+    <div class="head"><span class="num">5</span><h4>Apple Developer &mdash; $99/yr</h4><label class="done"><input type="checkbox" data-job="5"> DONE</label></div>
+    <a class="go" href="https://developer.apple.com/programs/enroll/">developer.apple.com/programs/enroll</a>
+    <p class="why">Make a new Apple Account with <b>hello@<span class="fill">DOMAIN</span></b> first (Gmail is rejected). Entity type: <b>Company / Organization</b>. Same name and address as job 2.</p>
+    <p class="why" style="margin-top:8px">Once approved: <a href="https://appstoreconnect.apple.com/access/users">appstoreconnect.apple.com/access/users</a> &rarr; <b>+</b> &rarr; our email &rarr; <b>App Manager</b> &rarr; tick <b>Access to Certificates, Identifiers &amp; Profiles</b>.</p>
+    <div class="stop">
+      <b class="t">ANSWER UNKNOWN NUMBERS</b>
+      Apple phones the business to verify. Miss it and you go back in the queue.
+    </div>
+    <p class="meta">APPLE PUBLISHES NO TIME: DAYS TO 30+ &middot; THE WEBSITE LAUNCHES WITHOUT IT</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">6</span><h4>Google Play &mdash; $25 once</h4><label class="done"><input type="checkbox" data-job="6"> DONE</label></div>
+    <a class="go" href="https://play.google.com/console/signup">play.google.com/console/signup</a>
+    <p class="why">Account type: <b>Organisation</b>. Same D-U-N-S, name and address. Then <b>Users and permissions</b> &rarr; <b>Invite new users</b> &rarr; our email &rarr; <b>Admin</b>.</p>
+    <div class="stop">
+      <b class="t">ONE RADIO BUTTON, WORTH TWO WEEKS</b>
+      Pick <b>Personal</b> and Google makes you find 12 testers and keep them signed up for 14 straight days before it will publish. <b>Organisation</b> skips that, and it's hard to change later.
+    </div>
+  </div>
+
+  <!-- ============ THIS WEEK ============ -->
+  <h2 class="band"><span>THIS WEEK</span></h2>
+
+  <div class="task you">
+    <div class="head"><span class="num">7</span><h4>Product photos</h4><label class="done"><input type="checkbox" data-job="7"> DONE</label></div>
+    <p class="why"><span class="fill">Their items and the total count.</span> Phone camera, daylight, shot from above, no flash. The only job that needs you open. Until they arrive, your logo shows instead of the product.</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">8</span><h4>Print the QR sticker</h4><label class="done"><input type="checkbox" data-job="8"> DONE</label></div>
+    <p class="why">We send the file <span class="fill">DAY</span>. Print <b>two</b>, 8 inches or bigger, weatherproof if offered. One at the window, one where people queue. Printers need a day.</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">9</span><h4>Day before: 20 minutes with us and your staff</h4><label class="done"><input type="checkbox" data-job="9"> DONE</label></div>
+    <p class="why">Everyone signs in on their own phone so we can set your roles, then we run a test order through the kitchen screen together. <b>On launch day the app is the website</b> &mdash; nothing to download.</p>
+  </div>
+
+  <div class="task you">
+    <div class="head"><span class="num">10</span><h4>Launch day: switch to Open</h4><label class="done"><input type="checkbox" data-job="10"> DONE</label></div>
+    <p class="why">Account &rarr; <b>Open / close</b> &rarr; <b>Open</b>. Nobody can order until you do. Switch it back when you close, every day.</p>
+  </div>
+
+  <!-- ============ THE EMAIL ============ -->
+  <h2 class="band"><span>YOUR ANSWERS</span><span class="sub">FILL IN WHAT YOU CAN — IT SAVES AS YOU GO</span></h2>
+  <div class="form">
+    <label class="q"><span class="qt">Legal business name</span><span class="hint">exactly as registered</span><input type="text" data-q="legal" placeholder=""></label>
+    <label class="q"><span class="qt">Business type</span><span class="choice"><label><input type="radio" name="entity" data-q="entity" value="LLC"> LLC</label><label><input type="radio" name="entity" data-q="entity" value="Corporation"> Corporation</label><label><input type="radio" name="entity" data-q="entity" value="Sole proprietor"> Sole proprietor</label></span></label>
+    <label class="q"><span class="qt">Web address</span><span class="choice"><label><input type="radio" name="domain" data-q="domain" value="Your suggestion is fine"> Your suggestion is fine</label><label><input type="radio" name="domain" data-q="domain" value="I want another"> I want another</label></span><input type="text" data-q="domain_other" placeholder="the one you want"></label>
+    <label class="q"><span class="qt">D-U-N-S number</span><span class="hint">when it arrives</span><input type="text" data-q="duns" placeholder=""></label>
+    <label class="q"><span class="qt">Your email and mobile</span><input type="text" data-q="contact" placeholder=""></label>
+    <label class="q"><span class="qt">Apple ID email</span><span class="hint">for the test app invite — add any staff who will test</span><input type="email" data-q="appleid" placeholder=""></label>
+    <label class="q"><span class="qt">Staff</span><span class="hint">name and mobile, one per line</span><textarea data-q="staff" placeholder=""></textarea></label>
+    <label class="q"><span class="qt">Address and opening hours</span><textarea data-q="where" placeholder=""></textarea></label>
+    <label class="q"><span class="qt">Already use Square?</span><span class="choice"><label><input type="radio" name="square" data-q="square" value="Yes"> Yes</label><label><input type="radio" name="square" data-q="square" value="No"> No</label></span></label>
+    <label class="q"><span class="qt">Stamp card as proposed</span><span class="choice"><label><input type="radio" name="stamps" data-q="stamps" value="OK"> OK</label><label><input type="radio" name="stamps" data-q="stamps" value="Change it"> Change it</label></span><input type="text" data-q="stamps_other" placeholder="what to change"></label>
+    <label class="q"><span class="qt">Opening offer as proposed</span><span class="choice"><label><input type="radio" name="offer" data-q="offer" value="OK"> OK</label><label><input type="radio" name="offer" data-q="offer" value="No"> No</label></span></label>
+    <label class="q"><span class="qt">Who handles refunds and complaints</span><input type="text" data-q="refunds" placeholder=""></label>
+    <label class="q"><span class="qt">Your story</span><span class="hint">3–5 sentences, shown in the app</span><textarea data-q="story" placeholder=""></textarea></label>
+    <label class="q"><span class="qt">3–5 Google reviews to show</span><span class="hint">the text and the first name</span><textarea data-q="reviews" placeholder=""></textarea></label>
+    <label class="q"><span class="qt">Your other links</span><span class="hint">TikTok, Facebook, DoorDash, Uber Eats, Grubhub</span><textarea data-q="links" placeholder=""></textarea></label>
+    <label class="q"><span class="qt">Photos</span><span class="choice"><label><input type="radio" name="photos" data-q="photos" value="Sent"> Sent</label><label><input type="radio" name="photos" data-q="photos" value="Coming"> Coming</label></span></label>
+    <div class="send"><button type="button" id="copyAnswers">COPY MY ANSWERS</button><span class="ok" id="copied"></span></div>
+    <p class="fine" style="margin:0">Then paste into a text or email to <b class="email"><span class="fill">OUR EMAIL</span></b>.</p>
+    <textarea id="answersOut" readonly></textarea>
+  </div>
+
+  <p class="note"><b>The rest is ours:</b> website, ordering, menu, kitchen screen, takings, sign-in texts, hosting, database. <span class="fill">What is already loaded — catalogue, prices, tax, logo.</span> <b>If Square isn't connected in time</b> you still open, with the free offer working and your usual reader or cash at the window.</p>
+
+
+  <div class="internal">
+    <h3>FOR US &mdash; DELETE BEFORE SENDING</h3>
+    <ul>
+      <li><b>Costs stay at the top.</b> The owner must see every cost before anything else. Fill in who pays the running costs.</li>
+      <li><b>Keep it short.</b> Tick boxes and the answers form replace any email back and forth.</li>
+      <li><b>Keep it under 800 words.</b> Cut anything obvious (&ldquo;have your EIN ready&rdquo;), anything explaining our process, and any reassurance they didn't ask for. A tired client does nothing.</li>
+      <li><b>Every job: a link, the clicks that matter, and one trap.</b> Nothing else. Only keep a trap that costs real time.</li>
+      <li><b>Ask business type on day one.</b> Apple and Google Play only accept LLC/corporation as an organisation. A sole trader enrols as an individual, and a personal Play account triggers the 12-tester, 14-day rule.</li>
+      <li><b>Domain first.</b> Apple rejects organisations with no website on their own domain and no work email on it. Register it in the client's legal name. Play, Square and the QR code all point at it.</li>
+      <li><b>D-U-N-S gates both stores</b> and can take 2 extra days for Apple to see.</li>
+      <li><b>Never ask for keys.</b> Payments connect through Square's Allow button; stores through an invite to our email.</li>
+      <li><b>This sheet is stage 0 of the playbook</b> (<code>docs/PLAYBOOK.md</code> in the client repo). Anything new we need from them goes on this sheet, never in a message.</li>
+      <li><b>Renumbering breaks cross-references.</b> After any cut, re-read every &ldquo;job N&rdquo; and every count in the intro.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var KEY = 'client-sheet-v1';
+  var load = function(){ try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e){ return {}; } };
+  var save = function(s){ try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} };
+  var state = load(); state.jobs = state.jobs || {}; state.answers = state.answers || {};
+
+  var boxes = document.querySelectorAll('input[data-job]');
+  var progress = document.getElementById('progress');
+  function paint(){
+    var n = 0;
+    boxes.forEach(function(b){
+      var on = !!state.jobs[b.dataset.job]; b.checked = on; if (on) n++;
+      var t = b.closest('.task'); if (t) t.classList.toggle('is-done', on);
+    });
+    if (progress) progress.textContent = n + ' OF ' + boxes.length + ' DONE';
+  }
+  boxes.forEach(function(b){ b.addEventListener('change', function(){ state.jobs[b.dataset.job] = b.checked; save(state); paint(); }); });
+  paint();
+
+  var fields = document.querySelectorAll('[data-q]');
+  fields.forEach(function(f){
+    var k = f.dataset.q, v = state.answers[k];
+    if (f.type === 'radio') f.checked = (v === f.value); else if (v !== undefined) f.value = v;
+    f.addEventListener(f.type === 'radio' || f.tagName === 'SELECT' ? 'change' : 'input', function(){
+      state.answers[k] = f.value; save(state);
+    });
+  });
+
+  var btn = document.getElementById('copyAnswers'), out = document.getElementById('answersOut'), ok = document.getElementById('copied');
+  if (btn) btn.addEventListener('click', function(){
+    var lines = ['Answers', ''];
+    document.querySelectorAll('.form label.q').forEach(function(l){
+      var q = l.querySelector('.qt').textContent.trim(), v = '';
+      var radio = l.querySelector('input[type=radio]:checked');
+      var other = l.querySelector('input[type=text],input[type=email],input[type=tel],select,textarea');
+      if (radio) v = radio.value;
+      if (other && other.value.trim()) v = v ? v + ' — ' + other.value.trim() : other.value.trim();
+      lines.push(q + ': ' + (v || '—'));
+    });
+    var done = []; boxes.forEach(function(b){ if (b.checked) done.push(b.closest('.task').querySelector('h4').textContent.trim()); });
+    lines.push('', 'Done so far: ' + (done.length ? done.join('; ') : 'nothing yet'));
+    var text = lines.join('\n');
+    out.value = text; out.style.display = 'block';
+    var shown = function(msg){ ok.textContent = msg; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){ shown('Copied — paste it into a text or email to us.'); },
+        function(){ out.select(); shown('Select all below and copy it.'); });
+    } else { out.select(); shown('Select all below and copy it.'); }
+  });
+})();
+</script>
+

@@ -57,7 +57,7 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 
 ## 5. Client-facing, the whole time
 
-- **One sheet** (Universal Client Pack, https://claude.ai/artifact/DmuMyjuiHjejKN9pVdwXvT → filled in per client; for Buns & Patties https://claude.ai/artifact/HwCPDBosxVayFjk2PFx6vm). Anything new we need from him goes on it, never in a message.
+- **One sheet** — costs first, tick boxes, an answers form (`tools/client-sheet/`). Universal Client Pack, https://claude.ai/artifact/DmuMyjuiHjejKN9pVdwXvT → filled in per client; for Buns & Patties https://claude.ai/artifact/HwCPDBosxVayFjk2PFx6vm). Anything new we need from him goes on it, never in a message.
 - **Nightly meeting notes** (`docs/MEETING_NOTES.md`): what landed, what's blocked. No new asks.
 - **Owner notes** (`docs/OWNER_NOTES.md`): every point he asks for → how it works → which QA check proves it.
 
