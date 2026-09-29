@@ -15,6 +15,8 @@ possible: it takes payments with no app store involved.
 
 **Stack:** Expo (React Native, iOS + Android + web) · Supabase (auth, Postgres, realtime, edge functions) · card payments into the owner's own **Square** (2.9% + 30¢ online; card, Apple Pay, Google Pay on Square's page).
 
+**TestFlight test app:** see [SAMIL.md](SAMIL.md). A plain clone builds it.
+
 ## Run it now (demo mode, no backend needed)
 
 ```bash

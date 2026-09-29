@@ -16,16 +16,14 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_ENV": "sandbox"
-      },
-      "channel": "preview"
+      }
     },
     "sit": {
       "distribution": "store",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_ENV": "sit"
-      },
-      "channel": "sit"
+      }
     },
     "uat": {
       "distribution": "store",
@@ -33,8 +31,7 @@
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_ENV": "uat"
-      },
-      "channel": "uat"
+      }
     },
     "preview-simulator": {
       "extends": "preview",
