@@ -13,7 +13,7 @@ and a builder for his own campaigns.
 Runs on iOS, Android **and the web**. The web build is what makes the launch date
 possible: it takes payments with no app store involved.
 
-**Stack:** Expo (React Native, iOS + Android + web) · Supabase (auth, Postgres, realtime, edge functions) · card payments into the owner's own **Square** (2.9% + 30¢ online). The checkout code still has the Stripe version until the Square swap lands — see OPERATIONS.md.
+**Stack:** Expo (React Native, iOS + Android + web) · Supabase (auth, Postgres, realtime, edge functions) · card payments into the owner's own **Square** (2.9% + 30¢ online; card, Apple Pay, Google Pay on Square's page).
 
 ## Run it now (demo mode, no backend needed)
 
@@ -92,7 +92,7 @@ rejected for exactly that.
 | `(tabs)/index` | Home: the logo smash (press, juice, fries), where/when, free drink, stamp card, reviews, tag us, links | reference screenshot 1 |
 | `(tabs)/menu` | Category pills + item rows with "+" | reference screenshot 3 |
 | `item/[id]` | Modifiers (required single / optional multi), qty, note | Toast/Owner item sheet |
-| `cart` | Pickup ASAP/scheduled, tip %, rewards shown as "on us", Pay (Stripe PaymentSheet) | reference screenshot 2 |
+| `cart` | Pickup ASAP/scheduled, tip %, rewards shown as "on us", Pay on the owner's Square page | reference screenshot 2 |
 | `order/[id]` | Received → Cooking → Ready, live via realtime | BurgerFi order tracking |
 | `(tabs)/rewards` | Live offers, then progress to the next free thing in money | |
 | `(tabs)/orders` | History + reorder entry point | |
@@ -214,44 +214,40 @@ and `7135554402` all have to resolve to the same row.
 
 ## Paying
 
-Two paths, one set of rules. Every order — native or web — is built by
-`supabase/functions/_shared/build-order.ts`, which owns all pricing and every
-entitlement check. The two checkouts cannot drift apart because neither has its
-own copy.
+Every order — app or website — goes through one function, `create-checkout`.
+`_shared/build-order.ts` prices it and checks every reward (the phone never sends a
+price); `_shared/square.ts` sends it to the **owner's Square** as an itemised pickup
+order and returns Square's hosted payment page. The customer pays there (card, Apple
+Pay, Google Pay) and comes back to their order screen. The owner sees each app order,
+item by item, in his own Square dashboard, and the money is his from the first second.
 
-| | How they pay | Needs a store account? |
-|---|---|---|
-| **Web** | Redirect to a Stripe-hosted page, back to the order screen | **No** |
-| **iOS / Android** | Native payment sheet, Apple Pay / Google Pay | Yes |
+He connects his Square once, from Owner → **Connect Square**: he signs in on the
+Square page and presses **Allow** (OAuth). The token stays on our server
+(`square_connection`, readable by nobody in the app). Sandbox can run on a fixed test
+seller token instead. Orders that total $0 (the free drink alone) skip Square.
 
-The web path is what makes a launch possible without waiting on Apple: a QR
-sticker points at the site, people scan it, order and pay, no install. Both paths
-land on the same webhook, and the reconciliation sweep understands both a
-PaymentIntent and a Checkout session.
-
-`EXPO_PUBLIC_SITE_URL` must match the real address exactly — Stripe returns
-customers to it after paying.
+`PUBLIC_SITE_URL` must match the real address exactly — Square returns customers to
+it after paying.
 
 ## When payment and food get out of step
 
-Stripe guarantees the money moved. It has no idea whether a burger was made — no
-processor does, and none sells that. Keeping the two in step is ours, so it is built
-in three layers rather than written down as a procedure:
+Square guarantees the money moved. It has no idea whether a burger was made — no
+processor does. Keeping the two in step is ours, in three layers:
 
-1. **The order row exists before the payment does.** `create-payment-intent` writes
-   the order as `pending_payment`, then creates the PaymentIntent carrying its id. So
-   "paid with no order record" is close to impossible by construction.
-2. **The webhook never lies to Stripe.** If the database write fails, it returns 500,
-   and Stripe retries with backoff for up to three days. Returning 2xx on a failed
-   write is the bug that loses orders. Every event is logged to `webhook_events`
-   keyed on Stripe's own event id, so a replay is recognised instead of redone.
-3. **A sweep asks Stripe the other way round.** `reconcile-orders` runs every five
-   minutes (`supabase/cron.sql`): for anything still `pending_payment`, it asks Stripe
-   what really happened and makes the database agree. Webhooks are a push and any push
-   can be missed; this is the pull that does not depend on delivery.
+1. **The order row exists before the payment does.** It is written as
+   `pending_payment`, and the Square order carries its id (`reference_id`). So "paid
+   with no order record" is close to impossible by construction.
+2. **The webhook never lies to Square** (`square-webhook`). Signature checked; if the
+   database write fails it returns 500 and Square retries. Every event is logged to
+   `webhook_events` keyed on Square's event id, so a replay is recognised instead of
+   redone. A full refund cancels the order, which hands back its stamps and offers.
+3. **A sweep asks Square the other way round.** `reconcile-orders` runs every five
+   minutes (`supabase/cron.sql`): a waiting order whose Square order is paid gets
+   opened; one abandoned for an hour has its payment page closed first, then is
+   cancelled; an app payment with no order is flagged.
 
 Anything that still slips through shows on the kitchen board as **Paid, but not on the
-board**, with the amount, so staff can release it by hand.
+board**, so staff can check Square and release it by hand.
 
 ```sql
 -- should always be empty
@@ -268,7 +264,7 @@ build it came from so "it broke" traces to a version.
 ## Deploying
 
 See [DEPLOY.md](DEPLOY.md). The one that bites: Expo Router exports dynamic routes
-as literal `[id]` files, so `/order/<id>` — where Stripe returns customers after
+as literal `[id]` files, so `/order/<id>` — where Square returns customers after
 paying — 404s without a host rewrite. `vercel.json`, `netlify.toml` and
 `public/_redirects` all carry it. **Test `/order/anything` before launch.**
 

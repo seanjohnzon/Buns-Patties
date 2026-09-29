@@ -35,12 +35,11 @@ from inside*, and they can remove us at any time without anything breaking.
   password.
 - **Never ask a client to email a key or token.** Square access tokens start
   `EAAA`, secrets `sq0`. The client page tells them to refuse — including us.
-- **State of the code (Monday 28):** checkout still runs through the Stripe
-  version (PaymentSheet on native, a hosted page on web, a webhook, a five-minute
-  reconcile sweep). The swap to Square's hosted checkout + `payment.updated`
-  webhook + the OAuth callback is the next job. The rest of the app (menu, prices,
-  stamps, rules) does not change with it — `_shared/build-order.ts` is payment-
-  provider neutral apart from the customer record.
+- **In the code:** `create-checkout` sends each order to his Square as an itemised
+  pickup order on a Square-hosted payment page; `square-webhook` and the
+  `reconcile-orders` sweep bring the payment back; `square-connect` /
+  `square-oauth` are the Allow button. Sandbox can skip the Allow button with a
+  test seller's token (`.env.server.example`).
 - **Later, many clients:** the same Allow button scales — every restaurant
   connects its own Square account to one app of ours. That is how Square's own
   App Marketplace partners work.

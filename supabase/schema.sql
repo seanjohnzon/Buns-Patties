@@ -15,7 +15,6 @@ create table profiles (
   phone text,
   birthday date,
   role app_role not null default 'customer',
-  stripe_customer_id text,
   expo_push_token text,
   created_at timestamptz default now()
 );
@@ -85,7 +84,8 @@ create table truck_status (
   ubereats_url text,
   grubhub_url text,
   testimonials jsonb not null default '[]',   -- [{"name","quote","stars"}], his picks from Google
-  -- Off until Stripe has approved the owner and we have connected it. While off,
+  -- Off until the owner's Square is connected and a real $1 order has gone
+  -- through and been refunded. While off,
   -- only $0 orders (the free drink) can go through; paid carts are told to pay
   -- at the window instead of hitting an error at checkout.
   payments_enabled boolean not null default false
@@ -108,8 +108,12 @@ create table orders (
   stamp_spend jsonb not null default '{}',     -- {"stamp_card": 5}: given back if the order dies
   pickup_at timestamptz,
   pickup_name text,               -- called out at the window, DoorDash style
-  stripe_payment_intent text unique,
-  stripe_checkout_session text unique,   -- web path
+  -- Square: the itemised order on the owner's account, its hosted payment page,
+  -- and the payment once made. The order row is written before any of these exist.
+  square_order_id text unique,
+  square_payment_link_id text,
+  square_payment_id text unique,
+  checkout_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -333,10 +337,10 @@ begin
 end $$;
 
 -- ---------- payment plumbing ----------
--- Every Stripe event we are handed, kept so a failure is visible rather than
--- silent. The primary key is Stripe's own event id, which makes replays safe.
+-- Every Square event we are handed, kept so a failure is visible rather than
+-- silent. The primary key is Square's own event id, which makes replays safe.
 create table webhook_events (
-  id text primary key,            -- Stripe event id, or reconcile-<ts>
+  id text primary key,            -- Square event_id, or reconcile-<ts>
   type text not null,
   received_at timestamptz not null default now(),
   handled_at timestamptz,         -- null = we never finished it
@@ -349,15 +353,15 @@ create policy "owner reads webhook events" on webhook_events for select using (i
 -- Orders that took money but never reached the kitchen. Should always be empty.
 -- The staff screen shows these so a human catches what automation missed.
 create or replace function stuck_orders()
-returns table (id uuid, created_at timestamptz, total numeric, stripe_payment_intent text)
+returns table (id uuid, created_at timestamptz, total numeric, square_order_id text)
 language plpgsql stable security definer set search_path = public as $$
 begin
   if not is_staff() then raise exception 'staff only'; end if;
   return query
-    select o.id, o.created_at, o.total, o.stripe_payment_intent
+    select o.id, o.created_at, o.total, o.square_order_id
     from orders o
     where o.status = 'pending_payment'
-      and o.stripe_payment_intent is not null
+      and o.square_order_id is not null
       and o.created_at < now() - interval '5 minutes'
       and o.created_at > now() - interval '2 days'
     order by o.created_at;
@@ -510,3 +514,47 @@ begin
     group by c.id, c.kind, c.title, c.active, c.ends_at, c.max_claims, c.claims_count
     order by c.created_at;
 end $$;
+
+-- ---------- Square connection ----------
+-- The owner connects his own Square account with one Allow button (Square
+-- OAuth; functions square-connect and square-oauth). The token lands here, where
+-- NO app user can read it — RLS on, no policies; only the server (service role)
+-- touches it. He disconnects from his Square dashboard at any time.
+create table square_connection (
+  id int primary key default 1 check (id = 1),
+  merchant_id text,
+  access_token text,
+  refresh_token text,
+  expires_at timestamptz,
+  location_id text,
+  location_name text,
+  business_name text,
+  connected_by uuid references profiles(id) on delete set null,
+  connected_at timestamptz
+);
+alter table square_connection enable row level security;
+
+create table square_oauth_states (
+  state text primary key,
+  user_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table square_oauth_states enable row level security;
+
+-- What the owner screen shows about it: connected or not, and into what.
+-- Never the token.
+create or replace function owner_square_status()
+returns json language plpgsql stable security definer set search_path = public as $$
+declare c square_connection%rowtype;
+begin
+  if not is_owner() then raise exception 'owner only'; end if;
+  select * into c from square_connection where id = 1;
+  return json_build_object(
+    'connected',    c.access_token is not null and c.location_id is not null,
+    'business',     c.business_name,
+    'location',     c.location_name,
+    'connectedAt',  c.connected_at,
+    'paymentsOn',   (select payments_enabled from truck_status where id = 1)
+  );
+end $$;
+

@@ -9,9 +9,8 @@ shared between them — SIT's dummy orders must never touch UAT's real takings.
 | SIT | a staging URL | SIT project | test mode |
 | UAT | bunsandpattieshtx.com | UAT project | **live, the owner's Square** |
 
-> **Payments, Monday 28:** the code below still describes the Stripe version.
-> The swap to Square (hosted checkout, `payment.updated` webhook, the OAuth
-> Allow callback) replaces step 2's webhook list; everything else stays.
+> Test builds for phones go through TestFlight on Samil's Apple account — see
+> [docs/TESTFLIGHT.md](docs/TESTFLIGHT.md).
 
 ---
 
@@ -41,16 +40,16 @@ cp .env.server.example .env.server      # fill it in, never commit it
 SUPABASE_PROJECT_REF=<ref> npm run deploy:functions
 ```
 
-Then in Stripe → **Developers → Webhooks**, add
-`https://<ref>.supabase.co/functions/v1/stripe-webhook` listening for:
+Then in the **Square Developer Console** (our app — one app for every restaurant):
 
-```
-payment_intent.succeeded      payment_intent.payment_failed
-payment_intent.canceled       charge.refunded
-checkout.session.completed    checkout.session.expired
-```
+- **OAuth → Redirect URL:** `https://<ref>.supabase.co/functions/v1/square-oauth`
+- **Webhooks → Add subscription:** `https://<ref>.supabase.co/functions/v1/square-webhook`,
+  events `payment.created`, `payment.updated`, `refund.created`, `refund.updated`.
+  Put its **signature key** and the URL exactly as entered in `.env.server`, and run
+  the deploy again.
 
-Put its signing secret in `.env.server` and run the deploy again.
+For UAT, the owner connects his Square from Owner → **Connect Square** (sign in,
+Allow). The owner screen then shows **Square connected** and which location.
 
 ## 3. The web app
 
@@ -60,14 +59,14 @@ npm run serve:web        # check it locally first
 ```
 
 **Dynamic routes need a rewrite or they 404.** Expo Router exports them as
-literal `[id]` files, so `/order/<id>` — the address Stripe returns customers to
+literal `[id]` files, so `/order/<id>` — the address Square returns customers to
 after paying — does not resolve on its own. A customer would see a 404 and think
 they had lost their money. `vercel.json`, `netlify.toml` and `public/_redirects`
 all carry the mapping; use whichever host you pick, and **test `/order/anything`
 before launch**.
 
 Set `EXPO_PUBLIC_SITE_URL` and the `PUBLIC_SITE_URL` secret to the real address,
-exactly. Stripe compares it.
+exactly. Square sends customers back to it.
 
 ## 4. Native apps, later
 

@@ -165,16 +165,7 @@ export function subscribeOrder(id: string, cb: (o: Order) => void) {
   return () => { supabase.removeChannel(ch); };
 }
 
-/** Web: builds the order and returns a Stripe-hosted page to send them to. */
-export async function createCheckoutSession(input: OrderInput): Promise<{ orderId: string; checkoutUrl?: string; free?: boolean }> {
-  if (!hasSupabase) throw new Error('Supabase not configured — see README');
-  const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: input });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
-}
-
-// Creates the order row + asks the edge function for a Stripe PaymentIntent.
+// What the app sends to checkout. No prices: the server works them all out.
 export type OrderInput = {
   lines: { menuItemId: string; name: string; qty: number; mods: string[]; note?: string; campaign?: string; tier?: number }[];
   tip: number;
@@ -182,9 +173,15 @@ export type OrderInput = {
   pickupName?: string;
 };
 
-export async function createOrder(input: OrderInput): Promise<{ orderId: string; paymentIntentClientSecret?: string; customerId?: string; ephemeralKey?: string; free?: boolean }> {
-  if (!hasSupabase) throw new Error('Supabase not configured — set EXPO_PUBLIC_SUPABASE_URL / ANON_KEY');
-  const { data, error } = await supabase.functions.invoke('create-payment-intent', { body: input });
+/**
+ * Builds and prices the order on the server and returns the owner's Square
+ * payment page to send the customer to — or `free` when there is nothing to pay.
+ * Same call from the app and the website.
+ */
+export async function createCheckout(input: OrderInput): Promise<{ orderId: string; checkoutUrl?: string; free?: boolean }> {
+  if (!hasSupabase) throw new Error('No database configured — see README');
+  const { data, error } = await supabase.functions.invoke('create-checkout', { body: input });
+  if (data?.error) throw new Error(data.error);
   if (error) throw error;
   return data;
 }
@@ -206,7 +203,7 @@ export async function staffSetStatus(id: string, status: Order['status']) {
 function mapOrder(o: any): Order {
   return {
     id: o.id, userId: o.user_id, status: o.status, subtotal: +o.subtotal, tax: +o.tax, tip: +o.tip, discount: +o.discount,
-    total: +o.total, stampsEarned: o.stamps_earned ?? 0, pickupAt: o.pickup_at, pickupName: o.pickup_name ?? null, createdAt: o.created_at,
+    total: +o.total, stampsEarned: o.stamps_earned ?? 0, checkoutUrl: o.checkout_url ?? null, pickupAt: o.pickup_at, pickupName: o.pickup_name ?? null, createdAt: o.created_at,
     lines: (o.order_lines ?? []).map((l: any) => ({ name: l.name, qty: l.qty, price: +l.unit_price, mods: l.mods ?? [], note: l.note ?? null, free: !!l.campaign_id })),
   };
 }
@@ -250,6 +247,26 @@ export async function getOwnerLoyalty(): Promise<LoyaltyRaw> {
   const { data, error } = await supabase.rpc('owner_loyalty');
   if (error) throw error;
   return data as LoyaltyRaw;
+}
+
+// ---------- owner: card payments (Square) ----------
+
+export type SquareStatus = { connected: boolean; business: string | null; location: string | null; connectedAt: string | null; paymentsOn: boolean };
+
+export async function getSquareStatus(): Promise<SquareStatus> {
+  if (!hasSupabase) return { connected: false, business: null, location: null, connectedAt: null, paymentsOn: false };
+  const { data, error } = await supabase.rpc('owner_square_status');
+  if (error) throw error;
+  return data as SquareStatus;
+}
+
+/** The squareup.com page where the owner signs in and presses Allow. */
+export async function squareConnectUrl(): Promise<string> {
+  if (!hasSupabase) throw new Error('Connect the database first — Square is linked to it.');
+  const { data, error } = await supabase.functions.invoke('square-connect', { body: {} });
+  if (data?.error) throw new Error(data.error);
+  if (error) throw error;
+  return data.url;
 }
 
 // ---------- owner: people ----------
@@ -342,7 +359,7 @@ export async function markFeedbackHandled(id: string, handled: boolean) {
 
 // ---------- payment safety net ----------
 
-export type StuckOrder = { id: string; createdAt: string; total: number; paymentIntent: string | null };
+export type StuckOrder = { id: string; createdAt: string; total: number; squareOrderId: string | null };
 
 /**
  * Orders that took money but never reached the kitchen. Should always be empty —
@@ -354,7 +371,7 @@ export async function getStuckOrders(): Promise<StuckOrder[]> {
   const { data, error } = await supabase.rpc('stuck_orders');
   if (error) throw error;
   return (data ?? []).map((r: any) => ({
-    id: r.id, createdAt: r.created_at, total: Number(r.total), paymentIntent: r.stripe_payment_intent,
+    id: r.id, createdAt: r.created_at, total: Number(r.total), squareOrderId: r.square_order_id,
   }));
 }
 

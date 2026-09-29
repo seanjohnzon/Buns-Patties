@@ -17,7 +17,7 @@ test('a closed truck takes nothing, not even the free drink', () => {
   assert.equal(b.reason, 'closed');
 });
 
-test('before Stripe approves the owner, paid carts are told to pay at the window', () => {
+test('before the owner\'s Square is connected, paid carts are told to pay at the window', () => {
   const b = checkoutBlock({ ...base, paymentsEnabled: false });
   assert.equal(b.blocked, true);
   assert.equal(b.reason, 'payments_off');
@@ -25,7 +25,7 @@ test('before Stripe approves the owner, paid carts are told to pay at the window
 });
 
 test('the free drink still works before card payments are switched on', () => {
-  // Launch can happen before Stripe clears; the sticker's offer must not depend on it.
+  // Launch can happen before Square is connected; the sticker's offer must not depend on it.
   assert.equal(checkoutBlock({ ...base, paymentsEnabled: false, total: 0 }).blocked, false);
 });
 

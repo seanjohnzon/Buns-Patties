@@ -51,7 +51,7 @@ export type CartLine = {
 };
 
 // Mirrors the order_status enum in supabase/schema.sql. 'pending_payment' is a
-// real state the app can see — a web customer returning from Stripe before the
+// real state the app can see — a customer back from the Square payment page before the
 // webhook has landed — so it has to be in here.
 export type OrderStatus = 'pending_payment' | 'received' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -65,6 +65,8 @@ export type Order = {
   discount: number;        // what the free lines would have cost; not taken off the total
   total: number;
   stampsEarned: number;
+  /** The Square payment page, while the order is waiting to be paid. */
+  checkoutUrl?: string | null;
   pickupAt: string | null; // ISO, null = ASAP
   pickupName: string | null;
   createdAt: string;

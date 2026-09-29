@@ -13,7 +13,7 @@ one open item.
 | # | He asked | How it works now | Auto | You | Status |
 |---|---|---|---|---|---|
 | 1 | Fries drop on the logo, scattered; the press comes down; juice comes out | Logo is three layers (badge, press, burger). Press winds up, slams, burger squashes. Juice wells out of the patty edges and runs down the bun in the logo's own style. Single seasoned fries (drawn, not the carton emoji) burst out and pop in around the screen, each falling and vanishing its own way. Scrolling presses again. | — | X01 X02 | Done |
-| 2 | Square dashboard; DoorDash, Grubhub, Uber Eats | Owner already has Square. Delivery apps: links on the truck page, shown under **Delivery** on Home. Real delivery orders come into Square through Square's own integrations (his setup). | — | X24 | Links done. **Square payment swap still to do.** |
+| 2 | Square dashboard; DoorDash, Grubhub, Uber Eats | App orders are paid into his Square and show in his Square dashboard as itemised pickup orders; he connects it with one Allow button. Delivery apps: links on the truck page, under **Delivery** on Home; delivery orders come into Square through Square's own integrations (his setup). | Auto (square.test) | X24 | Built. Sandbox test needs our Square developer app; live needs his Allow. |
 | 3 | Tag us on social media | Yellow "Post your burger. Tag @buns.patties" card on Home, opens Instagram. | — | X25 | Done |
 | 4 | Remove Google review | The free drink is Instagram only. No review action anywhere (also against Google's rules to reward reviews). | Auto | X04 | Done |
 | 5 | 10 orders of $15+ = one free burger | Stamp card. Orders of $15+ before tax earn a stamp. 10 = a free burger. | Auto | X16 X17 X19 | Done |
@@ -50,6 +50,6 @@ one open item.
 
 ## Still open
 
-1. **Square payments** — the app still charges through Stripe. Needed before Thursday's $1 test.
+1. **Square** — built (checkout, webhook, sweep, Connect Square button, 13 tests). Needs our free Square developer app to test in sandbox, then the owner's Allow on Thursday.
 2. **Owner's content** — story, 3–5 Google reviews, TikTok/Facebook/delivery links, phone and email (asked for on the What We Need page).
 3. **Instagram vs TikTok** for the free drink.

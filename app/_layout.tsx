@@ -1,4 +1,3 @@
-import { StripeProvider } from '@/lib/stripe';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -12,7 +11,6 @@ export const unstable_settings = { initialRouteName: '(tabs)' };
 SplashScreen.preventAutoHideAsync();
 configureForeground();
 
-const STRIPE_PK = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder';
 
 export default function RootLayout() {
   useEffect(() => { SplashScreen.hideAsync(); }, []);
@@ -34,9 +32,5 @@ export default function RootLayout() {
     </Stack>
   );
 
-  return (
-    <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.bunspatties.app">
-      {nav}
-    </StripeProvider>
-  );
+  return nav;
 }

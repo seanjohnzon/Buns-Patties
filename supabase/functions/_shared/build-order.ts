@@ -15,8 +15,11 @@ const TAX_RATE = 0.0825;   // Houston: 6.25% state + 2% local. Match lib/pricing
 export type BuiltOrder = {
   orderId: string;
   subtotal: number; tax: number; tip: number; total: number;
-  customerId: string;
   pickupName: string | null;
+  pickupAt: string | null;
+  phone: string | null;
+  /** Priced by the server, ready for the payment provider. */
+  lines: { name: string; qty: number; unitPrice: number; mods: string[]; note: string | null; free: boolean }[];
 };
 
 export type BuildFailure = { error: string; status: number };
@@ -124,22 +127,6 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
     return { error: 'Card payments are not switched on yet. Please pay at the window.', status: 409 };
   }
 
-  // Stripe customer, so saved cards and receipts follow the person.
-  let customerId = profile.stripe_customer_id;
-  if (!customerId) {
-    const res = await fetch('https://api.stripe.com/v1/customers', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${Deno.env.get('STRIPE_SECRET_KEY')}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ 'metadata[user_id]': userId, ...(profile.phone ? { phone: profile.phone } : {}) }),
-    });
-    const c = await res.json();
-    customerId = c.id;
-    await sb.from('profiles').update({ stripe_customer_id: customerId }).eq('id', userId);
-  }
-
   const pickupName = (body.pickupName ?? '').toString().slice(0, 40) || null;
 
   const { data: order, error } = await sb.from('orders').insert({
@@ -173,7 +160,12 @@ export async function buildOrder(sb: any, userId: string, body: any): Promise<Bu
       .eq('campaign_id', campaignId).eq('user_id', userId).is('used_at', null);
   }
 
-  return { orderId: order.id, subtotal, tax, tip, total, customerId, pickupName };
+  return {
+    orderId: order.id, subtotal, tax, tip, total, pickupName,
+    pickupAt: body.pickupAt ?? null,
+    phone: profile.phone ?? null,
+    lines: priced.map((l) => ({ name: l.name, qty: l.qty, unitPrice: l.unit_price, mods: l.mods, note: l.note, free: !!l.campaign_id })),
+  };
 }
 
 export function round2(n: number) { return Math.round((n + Number.EPSILON) * 100) / 100; }

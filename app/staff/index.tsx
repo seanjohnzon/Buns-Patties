@@ -44,13 +44,13 @@ export default function Kitchen() {
             <H2>Paid, but not on the board</H2>
             <Muted>
               {stuck.length === 1 ? 'Someone paid' : `${stuck.length} people paid`} and the order never opened.
-              Check the payment went through in Stripe, then put it on the board.
+              Check the payment went through in Square (Dashboard → Orders), then put it on the board.
             </Muted>
             {stuck.map((s) => (
               <Row key={s.id} style={{ justifyContent: 'space-between', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Body style={{ fontWeight: '600' }}>{money(s.total)}</Body>
-                  <Muted>{new Date(s.createdAt).toLocaleTimeString()} · {s.paymentIntent?.slice(-8)}</Muted>
+                  <Muted>{new Date(s.createdAt).toLocaleTimeString()} · {s.squareOrderId?.slice(-8)}</Muted>
                 </View>
                 <Button title="Put on the board" onPress={() => releaseStuckOrder(s.id).then(refresh)} />
               </Row>

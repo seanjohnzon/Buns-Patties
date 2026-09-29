@@ -7,7 +7,8 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Body, Button, Card, H2, Muted, Row, Screen, money } from '@/components/ui';
-import { getMenu, getOwnerLoyalty, getOwnerToday, getProductMix, isSoldOut, setSoldOut } from '@/lib/api';
+import * as WebBrowser from 'expo-web-browser';
+import { getMenu, getOwnerLoyalty, getOwnerToday, getProductMix, getSquareStatus, isSoldOut, setSoldOut, squareConnectUrl, type SquareStatus } from '@/lib/api';
 import { mixShare, summariseToday, type LoyaltyRaw, type MixRow, type TodayRaw } from '@/lib/reporting';
 import type { MenuItem } from '@/lib/types';
 import { theme } from '@/lib/theme';
@@ -19,6 +20,7 @@ export default function OwnerHome() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [off, setOff] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  const [square, setSquare] = useState<SquareStatus | null>(null);
 
   const load = useCallback(() => {
     setBusy(true);
@@ -26,11 +28,19 @@ export default function OwnerHome() {
       .then(([t, m, r]) => { setToday(t); setMix(m); setLoyalty(r); })
       .catch(() => {})
       .finally(() => setBusy(false));
+    getSquareStatus().then(setSquare).catch(() => {});
     getMenu().then(({ items }) => {
       setItems(items);
       setOff(Object.fromEntries(items.map((i) => [i.id, isSoldOut(i)])));
     }).catch(() => {});
   }, []);
+
+  // The one-time Allow button: opens Square, he signs in and allows, Square
+  // sends him back to a "connected" page. Nothing is typed or sent to us.
+  async function connectSquare() {
+    try { await WebBrowser.openBrowserAsync(await squareConnectUrl()); load(); }
+    catch (e: any) { Alert.alert('Could not open Square', e.message ?? String(e)); }
+  }
 
   async function toggleSoldOut(id: string, soldOut: boolean) {
     setOff((o) => ({ ...o, [id]: soldOut }));
@@ -66,6 +76,21 @@ export default function OwnerHome() {
           <Stat label="Tips" value={money(s.tips)} sub={<Muted>Staff, not takings</Muted>} />
           <Stat label="Given away" value={money(s.discount)} sub={<Muted>Free drinks & rewards</Muted>} />
         </Row>
+
+        <Card style={{ gap: 8 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <H2>Card payments</H2>
+            <Text style={[st.pill, { color: square?.connected ? theme.colors.success : theme.colors.heat }]}>{square?.connected ? 'SQUARE CONNECTED' : 'NOT CONNECTED'}</Text>
+          </Row>
+          {square?.connected ? (
+            <Muted>App orders are paid into {square.business ?? 'your Square account'}{square.location ? ` (${square.location})` : ''} and show in your Square dashboard. {square.paymentsOn ? '' : 'Payments switch on after our $1 test order.'}</Muted>
+          ) : (
+            <>
+              <Muted>Connect your Square account once: sign in on the Square page and press Allow. We never see your password or your bank.</Muted>
+              <Button title="Connect Square" onPress={connectSquare} />
+            </>
+          )}
+        </Card>
 
         <Card style={{ gap: 2 }}>
           <Row style={{ justifyContent: 'space-between', marginBottom: 4 }}>
@@ -155,5 +180,6 @@ const st = StyleSheet.create({
   track: { height: 6, backgroundColor: theme.colors.bgMuted, borderRadius: 3, overflow: 'hidden' },
   fill: { height: 6, backgroundColor: theme.colors.accent },
   soldRow: { gap: 10, paddingVertical: 4 },
+  pill: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   soldTag: { fontSize: 10, fontWeight: '800', letterSpacing: 1, color: theme.colors.heat },
 });

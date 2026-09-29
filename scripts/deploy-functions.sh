@@ -14,27 +14,29 @@ if [ ! -f .env.server ]; then
   exit 1
 fi
 
+npm run typecheck:functions
+
 echo "==> Deploying functions to $SUPABASE_PROJECT_REF"
-
-# The webhook is called by Stripe, which cannot send a Supabase auth header.
-npx supabase functions deploy stripe-webhook --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
-
-# These are called by the app with the customer's own token.
-npx supabase functions deploy create-payment-intent   --project-ref "$SUPABASE_PROJECT_REF"
-npx supabase functions deploy create-checkout-session --project-ref "$SUPABASE_PROJECT_REF"
-
-# The sweep is called by cron with its own shared secret, not a user token.
+# Called by the app with the customer's (or owner's) own token.
+npx supabase functions deploy create-checkout --project-ref "$SUPABASE_PROJECT_REF"
+npx supabase functions deploy square-connect  --project-ref "$SUPABASE_PROJECT_REF"
+# Called by Square, which cannot send a Supabase token: checked by signature / state instead.
+npx supabase functions deploy square-webhook --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+npx supabase functions deploy square-oauth   --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+# Called by cron with its own shared secret.
 npx supabase functions deploy reconcile-orders --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
 
 echo "==> Setting secrets"
 npx supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" --env-file .env.server
 
-echo
-echo "Done. Still to do by hand, once per project:"
-echo "  1. Stripe dashboard -> Webhooks -> add"
-echo "     https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/stripe-webhook"
-echo "     events: payment_intent.succeeded, payment_intent.payment_failed,"
-echo "             payment_intent.canceled, charge.refunded,"
-echo "             checkout.session.completed, checkout.session.expired"
-echo "     then put its signing secret in .env.server and re-run this script."
-echo "  2. Run supabase/cron.sql to schedule the reconciliation sweep."
+cat <<NEXT
+
+Done. Still to do by hand, once per project (Square Developer Console, our app):
+  1. OAuth → Redirect URL:
+       https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/square-oauth
+  2. Webhooks → Add subscription → URL:
+       https://$SUPABASE_PROJECT_REF.supabase.co/functions/v1/square-webhook
+     events: payment.created, payment.updated, refund.created, refund.updated
+     then put its signature key in .env.server and re-run this script.
+  3. Run supabase/cron.sql to schedule the reconciliation sweep.
+NEXT

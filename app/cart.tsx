@@ -1,12 +1,13 @@
-// Cart + checkout — name for the order, pickup time, tip, Stripe PaymentSheet.
+// Cart + checkout — name for the order, pickup time, tip, then the owner's
+// Square payment page (card, Apple Pay, Google Pay).
 // Rewards arrive here as a line marked "on us" (the free drink, a stamp-card
 // reward); only real extras on them are charged.
-import { useStripe } from '@/lib/stripe';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { Body, Button, Card, H2, Muted, Pill, Row, Screen, Stepper, money } from '@/components/ui';
-import { DEMO_ALLOWED, createCheckoutSession, createOrder, demoPlaceOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
+import { DEMO_ALLOWED, createCheckout, demoPlaceOrder, getProfile, getTruckStatus, saveName } from '@/lib/api';
 import { cartTotals, lineTotal, useCart } from '@/lib/cart';
 import { round2 } from '@/lib/pricing';
 import { summarise } from '@/lib/modifiers';
@@ -23,7 +24,6 @@ export default function Cart() {
   const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
-  const stripe = useStripe();
 
   // Re-checked every time the cart comes into view, not just the first time:
   // the truck may have opened or shut since.
@@ -69,33 +69,18 @@ export default function Cart() {
     try {
       await saveName(pickupName);
 
-      // Web has no native payment sheet, so Stripe hosts the payment page and
-      // sends them back to the order screen. Same order, same rules, same webhook.
-      if (Platform.OS === 'web') {
-        const res = await createCheckoutSession(payload);
-        clear();
-        // Nothing to pay (the free drink on its own) — straight to the order.
-        if (res.free || !res.checkoutUrl) { router.replace({ pathname: '/order/[id]', params: { id: res.orderId } }); return; }
-        await Linking.openURL(res.checkoutUrl);
-        return;
-      }
-
-      const res = await createOrder(payload);
-      if (res.free) { clear(); router.replace({ pathname: '/order/[id]', params: { id: res.orderId } }); return; }
-      if (!stripe) { Alert.alert('Payments unavailable', 'This build cannot take card payments.'); return; }
-      const init = await stripe.initPaymentSheet({
-        merchantDisplayName: 'Buns & Patties',
-        paymentIntentClientSecret: res.paymentIntentClientSecret!,
-        customerId: res.customerId, customerEphemeralKeySecret: res.ephemeralKey,
-        applePay: { merchantCountryCode: 'US' },
-        googlePay: { merchantCountryCode: 'US', testEnv: true },
-        allowsDelayedPaymentMethods: false,
-      });
-      if (init.error) throw new Error(init.error.message);
-      const { error } = await stripe.presentPaymentSheet();
-      if (error) { if (error.code !== 'Canceled') Alert.alert('Payment failed', error.message); return; }
+      const res = await createCheckout(payload);
       clear();
-      router.replace({ pathname: '/order/[id]', params: { id: res.orderId } });
+      const toOrder = () => router.replace({ pathname: '/order/[id]', params: { id: res.orderId } });
+      // Nothing to pay (the free drink on its own) — straight to the order.
+      if (res.free || !res.checkoutUrl) { toOrder(); return; }
+
+      // Square hosts the payment page. On the web we go there and Square sends
+      // them back to the order screen; in the app it opens over the top, and the
+      // order screen underneath flips to "received" the moment Square tells us.
+      if (Platform.OS === 'web') { await Linking.openURL(res.checkoutUrl); return; }
+      toOrder();
+      await WebBrowser.openBrowserAsync(res.checkoutUrl, { dismissButtonStyle: 'close' });
     } catch (e: any) {
       Alert.alert('Error', e.message ?? String(e));
     } finally { setBusy(false); }
