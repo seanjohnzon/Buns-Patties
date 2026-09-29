@@ -15,6 +15,8 @@ possible: it takes payments with no app store involved.
 
 **Stack:** Expo (React Native, iOS + Android + web) · Supabase (auth, Postgres, realtime, edge functions) · card payments into the owner's own **Square** (2.9% + 30¢ online; card, Apple Pay, Google Pay on Square's page).
 
+**How we deliver every client (stages, accounts, costs):** [docs/PLAYBOOK.md](docs/PLAYBOOK.md).
+
 **TestFlight test app:** Samil pastes the first line of [SAMIL.md](SAMIL.md) into Claude Code; it does the rest.
 
 ## Run it now (demo mode, no backend needed)
