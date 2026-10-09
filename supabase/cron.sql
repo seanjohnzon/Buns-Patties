@@ -4,7 +4,7 @@
 -- Run once per project, after schema.sql. One thing to change: the project
 -- address on the line marked CHANGE. Nothing here is a secret you have to keep.
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_net with schema extensions;
 
 -- This project's own address, and a secret made right here. Both live in
 -- Supabase Vault; the secret never leaves the database (see reconcile_secret_ok

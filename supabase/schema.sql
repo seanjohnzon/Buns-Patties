@@ -632,3 +632,25 @@ grant execute on function get_intake(text) to anon, authenticated;
 grant execute on function submit_intake(text, jsonb, jsonb) to anon, authenticated;
 
 insert into client_intake (code, business) values ('bp-7f3k9q', 'Buns & Patties') on conflict (code) do nothing;
+
+-- ---------- who may call what from outside ----------
+-- Supabase lets every function in this schema be called over the API
+-- (/rest/v1/rpc/<name>) by anyone, signed in or not, unless told otherwise.
+-- Every function above already checks who is asking. This shuts the door too,
+-- so a check dropped in a later edit is not all that stands between a stranger
+-- and the owner's numbers.
+--
+--   Nobody from outside: the trigger functions. They run by themselves.
+--   Signed in only:      the owner's and the kitchen's screens.
+--   Anyone, on purpose:  is_staff / is_owner (the row rules above call them for
+--                        every reader, signed in or not; they only ever answer
+--                        about the person asking), claim_campaign (it tells a
+--                        visitor to sign in first), and the intake form, which
+--                        works from its private code.
+-- Supabase's Security Advisor will still list those last ones, and the
+-- signed-in ones. That is expected.
+revoke execute on function handle_new_user(), on_order_paid(), protect_last_owner(), protect_profile_columns()
+  from public, anon, authenticated;
+revoke execute on function owner_today(text), owner_product_mix(int), owner_loyalty(), owner_feedback(int),
+  owner_campaigns(), owner_square_status(), stuck_orders()
+  from public, anon;

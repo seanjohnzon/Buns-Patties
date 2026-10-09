@@ -1,4 +1,4 @@
-<title>Buns &amp; Patties Setup</title>
+<title>Food Truck Setup Template</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Staatliches&family=Karla:wght@400;600;700&display=swap">
 <style>
   /* Layout: a checklist of sections at the top, then one card per section. Each card holds named boxes marked required or optional, and marks itself done when the required ones are filled. */
@@ -98,17 +98,21 @@
 
 <script>
 (function(){
-  /* SHEET-START: each client is this one object. */
+  /* SHEET-START: the FOOD TRUCK template. A new food truck is this one object. Nothing else on the page changes.
+     (Gas stations and restaurants get their own copy of this file later; most sections stay the same.)
+     Rules: one section per account or topic. Every box is named for exactly what goes in it.
+     req:1 = required. want:'Done' = required answer. A hint is one short line or nothing.
+     Order the account sections by how long approval takes. */
   var SHEET = {
-    key: 'bp-sheet-v3',
-    name: 'Buns & Patties',
+    key: 'client-sheet-v3',
+    name: '[Client name]',
     email: 'cihanshah.sahin@gmail.com',
     costs: [
       ['Apple Developer','Apple','$99 / year'],
       ['Google Play','Google','$25 once'],
-      ['Card payments','Square, per app order','2.9% + 30¢'],
+      ['Card payments','Square or Stripe, per app order','2.9% + 30¢'],
       ['Web address','the registrar, in your name','~$12 / year'],
-      ['Running the app','us, at cost','~$30–45 / month']
+      ['Running the app','us, [at cost / our fee]','[amount] / month']
     ],
     sections: [
       {id:'business', title:'Your business', fields:[
@@ -130,12 +134,12 @@
         {id:'name', label:'Developer account name', ph:'As shown in Play Console', req:1},
         {id:'invited', label:'Added us as Admin', url:'https://play.google.com/console/developers/users-and-permissions', go:'Open Users and permissions', note:'Invite new users, enter cihanshah.sahin@gmail.com, Account permissions, tick Admin, then Invite user.', choice:['Done'], req:1, want:'Done'}
       ]},
-      {id:'maps', title:'Google Maps listing', hint:'Move it to Houston and reopen it.', url:'https://business.google.com/', go:'Open', pending:['status','Change requested'], fields:[
-        {id:'status', label:'Where it stands', choice:['Change requested','Up to date'], req:1, def:'Change requested', want:'Up to date', note:'Changes take Google a few weeks. Come back and switch it when it is live.'},
-        {id:'link', label:'Link to your listing', ph:'In Google Maps: Share, then Copy link', req:1, def:'https://maps.google.com/?cid=559877457463287649'}
+      {id:'maps', title:'Google Maps listing', hint:'[What to fix on theirs, or: create one].', url:'https://business.google.com/', go:'Open', pending:['status','Change requested'], fields:[
+        {id:'status', label:'Where it stands', choice:['Change requested','Up to date'], req:1, want:'Up to date', note:'Changes take Google a few weeks. Come back and switch it when it is live.'},
+        {id:'link', label:'Link to your listing', ph:'In Google Maps: Share, then Copy link', req:1}
       ]},
       {id:'pay', title:'Card payments', hint:'No keys or passwords.', fields:[
-        {id:'provider', label:'Take card payments through', choice:['Square','Stripe'], req:1, def:'Square'},
+        {id:'provider', label:'Take card payments through', choice:['Square','Stripe'], req:1},
         {id:'sq_email', label:'Square account email', ph:'The email you sign in to Square with', req:1, when:['provider','Square']},
         {id:'st_email', label:'Stripe account email', ph:'', req:1, when:['provider','Stripe']},
         {id:'st_invited', label:'Added us as Developer', url:'https://dashboard.stripe.com/settings/team', go:'Open Team', note:'New member, enter cihanshah.sahin@gmail.com, role Developer, Send invite.', choice:['Done'], req:1, want:'Done', when:['provider','Stripe']}
@@ -147,8 +151,9 @@
         {id:'cemail', label:'Email customers write to', ph:''},
         {id:'story', label:'Your story', ph:'3–5 sentences, shown in the app', area:1, req:1}
       ]},
-      {id:'menu', title:'Menu', hint:'Received. It is already loaded into the app.', fields:[
-        {id:'file', label:'Your menu', ph:'Link to a photo or PDF of your menu', req:1, def:'Menu.pdf (received 27 Sep)'}
+      {id:'menu', title:'Menu', hint:'A photo or PDF of your current menu, with prices.', fields:[
+        {id:'file', label:'Your menu', ph:'Link to a photo or PDF of your menu', req:1}
+        /* Already have the client's menu? Add def:'<file name> (received <date>)' and it opens as done. */
       ]},
       {id:'links', title:'Links and reviews', fields:[
         {id:'tiktok', label:'TikTok', ph:'Link'},

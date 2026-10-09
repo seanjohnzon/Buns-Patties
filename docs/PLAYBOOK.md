@@ -11,8 +11,8 @@ steps below run in order.
 | GitHub (seanjohnzon) | one repo per client | free | ✅ |
 | Expo (cihanshah) | builds; one project per client, up to 50 | **Starter $19/mo** before any paying client (Free is only for pre-revenue/hobby) | ✅ account · ⏳ upgrade to Starter |
 | Apple — Samil's team | test apps on TestFlight before a client has his own account | Samil's $99/yr | ✅ |
-| Supabase | database, sign-in, server code | **two orgs**: "Test" (Free; max **2 active projects**, pauses after 7 idle days, no backups) and "Clients" (**Pro $25/mo**, daily backups, includes one project) | ❌ sign up |
-| Square Developer | the one app every restaurant presses Allow on; payment webhooks | free, no Square review | ❌ sign up |
+| Supabase | database, sign-in, server code | **two orgs**: "Test" (Free; max **2 active projects**, pauses after 7 idle days, no backups) and "Clients" (**Pro $25/mo**, daily backups, includes one project) | ✅ "Test" = the **Sahin LLC** org (Free) · ❌ "Clients" (Pro), at the first launch |
+| Square Developer | the one app every restaurant presses Allow on; payment webhooks | free, no Square review | ✅ account, sandbox keys · ⏳ production keys at stage 4 |
 | Twilio | sign-in text codes (Verify — no carrier registration per client) | pay as you go; one **Primary Compliance Profile**, approval ≤48h, before the first live client | ❌ sign up |
 | Netlify | hosts each client's website | Free to start (300 credits, pauses at the cap); **Pro $20/mo** from the second live client. Not Vercel Hobby, not Cloudflare Free (their terms don't allow it) | ❌ sign up |
 | Porkbun | client domains, registered in the client's legal name; free email forwarding | ~$11–12/yr per domain | ❌ sign up |
@@ -35,7 +35,7 @@ About **$30–45/mo per client** on our side. Fixed agency base: $25 Supabase + 
 
 | # | Stage | Done when | Lead time |
 |---|---|---|---|
-| 0 | **Kickoff.** Send the client his intake link (`/intake?c=<code>`: costs, his jobs with tick + notes, the answers — sent straight to us; `data/intake/<client>.json`). He starts the slow things that day: D-U-N-S, Apple Organization, Google Organization, Google listing, Square. We run section 4. | sheet sent, section 4 done | day 0, ~2 hours ours |
+| 0 | **Kickoff.** Send the client his sheet (`tools/client-sheet/`: one section per account, required and optional boxes, a button to the exact page for each job). Until our own domain is up it is a claude.ai page with a Copy button; after that it is `/intake?c=<code>` with Send, straight into `client_intake`. He starts the slow things that day: D-U-N-S, Apple Organization, Google Organization, Google listing, Square. We run section 4. | sheet sent, section 4 done | day 0, ~2 hours ours |
 | 1 | **Build.** Menu into `data/menu.seed.json` → `node scripts/build-seed.mjs`. Branding, campaigns. | QA Gate 0 green, Gate 1 in Expo Go | 2–4 days |
 | 2 | **Test app.** TestFlight on Samil's team (`SAMIL.md` — his Claude does it). The owner walks Gate 1 on his own phone. | owner has ticked Gate 1 | same day |
 | 3 | **SIT.** Supabase test project + Square sandbox + test sign-in codes. | QA Gates 2 and 3 green | 1–2 days |
@@ -49,16 +49,16 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 
 1. **Repo:** copy this one → `github.com/seanjohnzon/<Client>`. Change the name, bundle ids and slug in `app.json` / `app.config.js`. Test id `com.<client>.app.preview`, real id `com.<client>.app`. Never upload the real id from Samil's team: bundle ids lock to the first team that uploads a build.
 2. **Expo:** `npx eas-cli init` (project under our account).
-3. **Supabase:** a SIT project in "Test" (us-east-2). Run `schema.sql`, `seed.sql`, `cron.sql`. Phone sign-in → Test OTP numbers. `scripts/deploy-functions.sh`. The production project in "Clients" waits for stage 4.
+3. **Supabase:** a SIT project in "Test" (us-east-2). Run `schema.sql`, `seed.sql`, `cron.sql` (one line to change: the project ref). Phone sign-in → Test OTP numbers. Functions: `scripts/deploy-functions.sh`, or from a Claude chat with the Supabase connector (DEPLOY.md, "Without a terminal"). One secret to type in: the Square **sandbox** token. Then run the checks in DEPLOY.md. The production project in "Clients" waits for stage 4.
 4. **Twilio:** subaccount `<Client> – prod` → Verify service (friendly name = the brand, **code length 6**, US only). Paste into Supabase → Phone → Twilio Verify. Raise Supabase's SMS limit from 30/hour.
 5. **Square Developer:** add this client's webhook URL(s) to our one app. Nothing else until he presses Allow.
 6. **Domain:** register at Porkbun in the client's legal name, `hello@` forwarding to his inbox, Netlify site from the repo (`npm run build:web`).
-7. **Intake:** copy `data/intake/buns-and-patties.json` → `data/intake/<client>.json`, add its private code in `lib/intake-links.ts`, insert its row in `client_intake`, send him the link. Read answers: `select * from client_intake`.
+7. **Sheet:** copy `tools/client-sheet/food-truck.html`, fill in the `SHEET` object (its README says which four things), publish, send him the link. For the hosted form: add his private code in `lib/intake-links.ts` and his row in `client_intake`. Read answers: `select * from client_intake`.
 8. **QA page:** start a run for the client.
 
 ## 5. Client-facing, the whole time
 
-- **One sheet** — costs first, tick boxes, an answers form (`tools/client-sheet/`). Universal Client Pack, https://claude.ai/artifact/DmuMyjuiHjejKN9pVdwXvT → filled in per client; for Buns & Patties https://claude.ai/artifact/HwCPDBosxVayFjk2PFx6vm). Anything new we need from him goes on it, never in a message.
+- **One sheet** — a checklist of sections, each with named boxes marked required or optional and a button to the exact page (`tools/client-sheet/`). The Food Truck template, https://claude.ai/artifact/DmuMyjuiHjejKN9pVdwXvT → filled in per client; for Buns & Patties https://claude.ai/artifact/HwCPDBosxVayFjk2PFx6vm. Anything new we need from him goes on it, never in a message. Everything on it is something he can do that day.
 - **Nightly meeting notes** (`docs/MEETING_NOTES.md`): what landed, what's blocked. No new asks.
 - **Owner notes** (`docs/OWNER_NOTES.md`): every point he asks for → how it works → which QA check proves it.
 
@@ -70,13 +70,13 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 
 ---
 
-## Buns & Patties — where it stands (29 Sep)
+## Buns & Patties — where it stands (9 Oct)
 
 | Stage | State |
 |---|---|
-| 0 Kickoff | ✅ sheet sent. Owner: D-U-N-S requested; legal name, domain yes, Apple ID email pending (on the sheet) |
-| 1 Build | ✅ Gates 0–1 green (125 tests; the 25 Expo Go checks walked on the simulator) |
+| 0 Kickoff | ✅ sheet sent; rebuilt 9 Oct at the same link. Owner: D-U-N-S requested, menu received and loaded, Google Maps move requested (pending at Google). Still on the sheet: legal name, domain, Apple and Google accounts, Square email, the truck, photos |
+| 1 Build | ✅ Gates 0–1 green (141 tests; the 25 Expo Go checks walked on the simulator) |
 | 2 Test app | ⏳ Samil runs `SAMIL.md` → owner gets B&P Test |
-| 3 SIT | ❌ waiting on our Supabase / Square Developer / Twilio accounts (section 1) |
-| 4 Launch | Friday 2 Oct — web. Needs stage 3, the domain, and his Allow on Square (Thursday) |
+| 3 SIT | ⏳ Supabase test project **`buns-patties-test`** (ref `ysochqypjpmuhackmzqw`, us-east-2) is up: schema, menu, the five-minute sweep, all five functions, and every check in DEPLOY.md passes. Still needed: the Square sandbox token typed in as a secret, a test phone code for sign-in, a web address for the site |
+| 4 Launch | Web. Needs stage 3, his domain, and his Allow on Square |
 | 5 Stores | after the D-U-N-S → his Apple and Google accounts |

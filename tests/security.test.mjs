@@ -63,3 +63,19 @@ test('checkout only sends customers back to a real address', () => {
   // Half an address ("/order/…" with no site in front) makes Square refuse the payment.
   assert.match(checkout, /\.\.\.\(site \? \{ redirect_url: `\$\{site\}\/order\/\$\{built\.orderId\}\?paid=1` \} : \{\}\)/);
 });
+
+test('a stranger cannot call the owner\'s or the kitchen\'s functions, or a trigger, over the API', () => {
+  const doors = schema.slice(schema.indexOf('-- ---------- who may call what from outside ----------'));
+  assert.ok(doors.length > 0, 'the "who may call what" section is missing');
+  assert.match(doors, /revoke execute on function handle_new_user\(\), on_order_paid\(\), protect_last_owner\(\), protect_profile_columns\(\)\s+from public, anon, authenticated;/);
+  const signedInOnly = doors.slice(doors.indexOf('revoke execute on function owner_today'));
+  for (const fn of ['owner_today(text)', 'owner_product_mix(int)', 'owner_loyalty()', 'owner_feedback(int)', 'owner_campaigns()', 'owner_square_status()', 'stuck_orders()']) {
+    assert.ok(signedInOnly.includes(fn), `${fn} is still open to people who are not signed in`);
+  }
+  assert.match(signedInOnly, /from public, anon;/);
+  // The row rules call these two for every reader; closing them would break the public menu.
+  assert.doesNotMatch(doors, /revoke execute on function[^;]*\bis_(staff|owner)\(\)/);
+  // Every owner_* function in the schema is on the list (a new one must be added here too).
+  const owners = [...new Set([...schema.matchAll(/create or replace function (owner_\w+)\(/g)].map((m) => m[1]))];
+  for (const name of owners) assert.ok(signedInOnly.includes(name + '('), `${name} is missing from the signed-in-only list`);
+});
