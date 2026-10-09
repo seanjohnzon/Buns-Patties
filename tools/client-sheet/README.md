@@ -57,6 +57,8 @@ A section with no required boxes shows OPTIONAL and does not count toward "X OF 
 - **Do not reinvent it.** Check how owner.com asks before adding a section.
 - **Never a password, never a key.** The sheet says so at the top.
 - He buys the domain and the accounts himself, in his own name. We get invited.
+- **Only send him to names he knows.** The domain button goes to GoDaddy, and says to buy
+  the name only: registrars offer hosting and email at checkout, and he needs neither.
 
 ## What is still to come
 

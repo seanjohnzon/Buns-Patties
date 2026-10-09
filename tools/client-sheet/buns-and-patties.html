@@ -107,7 +107,7 @@
       ['Apple Developer','Apple','$99 / year'],
       ['Google Play','Google','$25 once'],
       ['Card payments','Square, per app order','2.9% + 30¢'],
-      ['Web address','the registrar, in your name','~$12 / year'],
+      ['Web address','GoDaddy, in your name','~$23 / year'],
       ['Running the app','us, at cost','~$30–45 / month']
     ],
     sections: [
@@ -115,8 +115,8 @@
         {id:'legal', label:'Legal business name', ph:'Exactly as registered', req:1},
         {id:'type', label:'Business type', choice:['LLC','Corporation','Sole proprietor'], req:1}
       ]},
-      {id:'web', title:'Web address or domain', hint:'The QR sticker opens it, and Apple needs a business website and an email on it. Buy it in your own name.', url:'https://porkbun.com/', go:'Get one', fields:[
-        {id:'domain', label:'Your web address or domain', ph:'yourname.com', req:1}
+      {id:'web', title:'Web address or domain', hint:'The QR sticker opens it, and Apple needs a business website and an email on it. Buy it in your own name.', url:'https://www.godaddy.com/domains/domain-name-search', go:'Get one at GoDaddy', fields:[
+        {id:'domain', label:'Your web address or domain', ph:'yourname.com', req:1, note:'Buy the name only. Say no to hosting, email and every other extra at checkout.'}
       ]},
       {id:'duns', title:'D-U-N-S number', hint:'Free. Request it under the exact legal name.', url:'https://developer.apple.com/enroll/duns-lookup/', go:'Get it', fields:[
         {id:'number', label:'D-U-N-S number', ph:'9 digits', req:1}

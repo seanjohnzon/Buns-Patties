@@ -15,7 +15,7 @@ steps below run in order.
 | Square Developer | the one app every restaurant presses Allow on; payment webhooks | free, no Square review | ✅ account, sandbox keys · ⏳ production keys at stage 4 |
 | Twilio | sign-in text codes (Verify — no carrier registration per client) | pay as you go; one **Primary Compliance Profile**, approval ≤48h, before the first live client | ❌ sign up |
 | Netlify | hosts each client's website | Free to start (300 credits, pauses at the cap); **Pro $20/mo** from the second live client. Not Vercel Hobby, not Cloudflare Free (their terms don't allow it) | ❌ sign up |
-| Porkbun | client domains, registered in the client's legal name; free email forwarding | ~$11–12/yr per domain | ❌ sign up |
+| GoDaddy | our own brand domain. Clients buy theirs themselves, in their own name, from the button on their sheet (a registrar they have heard of) | $2.99 the first year for a new customer (code GDWELCOME, 1-year term), then $22.99/yr. Checked on godaddy.com, 9 Oct 2026 | ❌ buy once the name is chosen |
 
 ## 2. What each client costs
 
@@ -24,7 +24,7 @@ steps below run in order.
 | Database (Supabase Micro in "Clients") | us | ~$10/mo (the first client is covered by the $25 Pro base) |
 | Sign-in texts (Twilio Verify, $0.05 + $0.0083 each) | us | ~$15–30/mo at 200–500 sign-ups |
 | Builds, hosting | us | share of Expo Starter + Netlify |
-| Domain | us, rebilled | ~$12/yr |
+| Domain (GoDaddy) | client, in his own name | ~$23/yr |
 | Apple Developer (Organization) | client | $99/yr |
 | Google Play (Organization) | client | $25 once |
 | Card processing (his Square) | client | 2.9% + 30¢ per online order |
@@ -52,7 +52,7 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 3. **Supabase:** a SIT project in "Test" (us-east-2). Run `schema.sql`, `seed.sql`, `cron.sql` (one line to change: the project ref). Phone sign-in → Test OTP numbers. Functions: `scripts/deploy-functions.sh`, or from a Claude chat with the Supabase connector (DEPLOY.md, "Without a terminal"). One secret to type in: the Square **sandbox** token. Then run the checks in DEPLOY.md. The production project in "Clients" waits for stage 4.
 4. **Twilio:** subaccount `<Client> – prod` → Verify service (friendly name = the brand, **code length 6**, US only). Paste into Supabase → Phone → Twilio Verify. Raise Supabase's SMS limit from 30/hour.
 5. **Square Developer:** add this client's webhook URL(s) to our one app. Nothing else until he presses Allow.
-6. **Domain:** register at Porkbun in the client's legal name, `hello@` forwarding to his inbox, Netlify site from the repo (`npm run build:web`).
+6. **Domain:** the client buys it himself at GoDaddy, in his own name (the button on his sheet: the name only, none of the extras offered at checkout), and puts it on the sheet. We point it at the Netlify site from the repo (`npm run build:web`) and set up `hello@` forwarding to his inbox.
 7. **Sheet:** copy `tools/client-sheet/food-truck.html`, fill in the `SHEET` object (its README says which four things), publish, send him the link. For the hosted form: add his private code in `lib/intake-links.ts` and his row in `client_intake`. Read answers: `select * from client_intake`.
 8. **QA page:** start a run for the client.
 
@@ -65,7 +65,7 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 ## 6. Coming changes to plan for
 
 - Supabase retires the `anon` / `service_role` keys at the end of 2026 in favour of `sb_publishable_` / `sb_secret_`. Move the template before then.
-- .com wholesale price rises 1 Nov 2026 (and up to 7% a year after). Budget $12 a year.
+- .com wholesale price rises 1 Nov 2026 (and up to 7% a year after). Budget $23 a year at GoDaddy.
 - Apple and Google both reject near-identical apps (4.3). Each client needs his own branding, menu and screenshots.
 
 ---
