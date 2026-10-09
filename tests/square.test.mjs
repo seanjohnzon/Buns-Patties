@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { SQUARE_SCOPES, TAX_PERCENT, acceptSquareTotal, cents, e164, fullyRefunded, modSummary, orderIsPaid, squareBase, squareOrder, verifySquareSignature } from '../supabase/functions/_shared/square.ts';
+import { SQUARE_SCOPES, TAX_PERCENT, acceptSquareTotal, cents, e164, fullyRefunded, mainLocation, modSummary, orderIsPaid, squareBase, squareOrder, verifySquareSignature } from '../supabase/functions/_shared/square.ts';
 
 const order = {
   orderId: '3f2b6c1e-9a8d-4f7e-b1c2-0d9e8f7a6b5c',
@@ -126,4 +126,11 @@ test('refunds that come in pieces count once they add up to the whole payment', 
   assert.equal(fullyRefunded({ total_money: { amount: 2943 }, refunded_money: { amount: 2943 } }), true);
   assert.equal(fullyRefunded({ amount_money: { amount: 500 }, refunded_money: { amount: 500 } }), true);
   assert.equal(fullyRefunded(null), false);
+});
+
+test('app orders go to the first active Square location', () => {
+  assert.equal(mainLocation([{ id: 'OLD', status: 'INACTIVE' }, { id: 'TRUCK', status: 'ACTIVE' }, { id: 'SECOND', status: 'ACTIVE' }]).id, 'TRUCK');
+  assert.equal(mainLocation([{ id: 'ONLY', status: 'INACTIVE' }]).id, 'ONLY', 'one location, even inactive, beats none');
+  assert.equal(mainLocation([]), null);
+  assert.equal(mainLocation(undefined), null);
 });

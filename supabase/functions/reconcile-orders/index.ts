@@ -11,18 +11,34 @@
 //
 // Square is the source of truth for money. We are the source of truth for food.
 // Run it on a schedule — see supabase/cron.sql.
-// Secrets: RECONCILE_SECRET, SQUARE_*, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Secrets: SQUARE_*, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY. The secret the
+// cron job sends is made and kept in the database (cron.sql), so there is
+// nothing to copy across; RECONCILE_SECRET is only for running this by hand.
 import { admin, json } from '../_shared/http.ts';
 import { ORDER_SOURCE, SquareError, orderIsPaid, squareAuth, squareFetch } from '../_shared/square.ts';
 
 const ABANDONED_MIN = 60;
 const LOOKBACK_DAYS = 3;
 
+/**
+ * Only the cron job may run the sweep. If RECONCILE_SECRET is set on the
+ * function, that is the secret. Otherwise the database is asked whether the
+ * one it was sent matches the one in its Vault. No secret sent, no sweep.
+ */
+// deno-lint-ignore no-explicit-any
+async function allowed(sb: any, sent: string | null) {
+  if (!sent) return false;
+  const fixedSecret = Deno.env.get('RECONCILE_SECRET');
+  if (fixedSecret) return sent === fixedSecret;
+  const { data, error } = await sb.rpc('reconcile_secret_ok', { p_secret: sent });
+  return !error && data === true;
+}
+
 Deno.serve(async (req) => {
-  if (req.headers.get('x-reconcile-secret') !== Deno.env.get('RECONCILE_SECRET')) {
+  const sb = admin();
+  if (!(await allowed(sb, req.headers.get('x-reconcile-secret')))) {
     return new Response('no', { status: 401 });
   }
-  const sb = admin();
   const fixed: string[] = [], closed: string[] = [], orphans: string[] = [], failed: string[] = [];
   const since = new Date(Date.now() - LOOKBACK_DAYS * 864e5).toISOString();
   const minutesOld = (iso: string) => (Date.now() - new Date(iso).getTime()) / 60000;

@@ -4,7 +4,7 @@
 // Square Developer Console.
 // Secrets: SQUARE_ENV, SQUARE_APPLICATION_ID, SQUARE_APPLICATION_SECRET, SUPABASE_*
 import { admin } from '../_shared/http.ts';
-import { SQUARE_VERSION, squareBase, squareFetch } from '../_shared/square.ts';
+import { SQUARE_VERSION, mainLocation, squareBase, squareFetch } from '../_shared/square.ts';
 
 Deno.serve(async (req) => {
   const q = new URL(req.url).searchParams;
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   let location: any = null, business = '';
   try {
     const l = await squareFetch(base, t.access_token, '/v2/locations');
-    location = (l.locations ?? []).find((x: any) => x.status === 'ACTIVE') ?? l.locations?.[0];
+    location = mainLocation(l.locations);
     business = location?.business_name ?? location?.name ?? '';
   } catch (_) { /* stored without; the owner screen will say so */ }
 

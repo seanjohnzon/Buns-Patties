@@ -33,7 +33,10 @@ $$;
 
 -- profile row on new auth user. No signup bonus: the welcome drink is earned
 -- by following, not given away for installing.
-create or replace function handle_new_user() returns trigger language plpgsql security definer as $$
+-- The search path is set here on purpose: sign-in runs as Supabase's auth role,
+-- which only looks in the auth schema, so without it "profiles" is not found and
+-- nobody can sign up at all.
+create or replace function handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into profiles (id, phone) values (new.id, new.phone);
   return new;
@@ -387,6 +390,19 @@ begin
       and o.created_at > now() - interval '2 days'
     order by o.created_at;
 end $$;
+
+-- The sweep (reconcile-orders, run by supabase/cron.sql) proves itself with a
+-- secret that is made inside this database and kept in Supabase Vault. Nobody
+-- types it, copies it or sees it: the cron job reads it to send, and the
+-- function asks here whether what it was sent is right. Server only.
+create or replace function reconcile_secret_ok(p_secret text) returns boolean
+  language sql stable security definer set search_path = '' as $$
+  select coalesce(length(p_secret), 0) >= 32 and exists (
+    select 1 from vault.decrypted_secrets where name = 'reconcile_secret' and decrypted_secret = p_secret
+  );
+$$;
+revoke execute on function reconcile_secret_ok(text) from public, anon, authenticated;
+grant execute on function reconcile_secret_ok(text) to service_role;
 
 -- ---------- campaigns ----------
 -- Everything we give away is a campaign. There are no points. Two kinds:

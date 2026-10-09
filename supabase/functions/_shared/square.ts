@@ -81,6 +81,15 @@ export function acceptSquareTotal(oursDollars: number, squareCents: number) {
   return Math.abs(cents(oursDollars) - squareCents) <= 2;
 }
 
+/**
+ * Which of a Square account's locations app orders go to: the first active
+ * one. Most trucks have exactly one. Nothing in, nothing out.
+ */
+export function mainLocation<T extends { status?: string }>(locations: T[] | null | undefined): T | null {
+  const all = locations ?? [];
+  return all.find((x) => x.status === 'ACTIVE') ?? all[0] ?? null;
+}
+
 /** A US number as Square wants it: +1XXXXXXXXXX, or nothing. */
 export function e164(digits: string | null | undefined) {
   const d = (digits ?? '').replace(/\D/g, '');
@@ -161,19 +170,30 @@ export async function squareFetch(base: string, token: string, path: string, ini
 
 export type SquareAuth = { base: string; token: string; locationId: string };
 
+// The location found for a fixed token, kept while this function stays warm.
+let found: { token: string; locationId: string } | null = null;
+
 /**
- * The token and location to charge into. Sandbox can run on a fixed developer
- * token (SQUARE_ACCESS_TOKEN + SQUARE_LOCATION_ID). Live uses what the owner's
- * Allow button stored, refreshed a week before it expires (Square tokens last
- * 30 days).
+ * The token and location to charge into. Sandbox runs on one fixed developer
+ * token (SQUARE_ACCESS_TOKEN): its location is looked up, or can be pinned with
+ * SQUARE_LOCATION_ID. Live uses what the owner's Allow button stored, refreshed
+ * a week before it expires (Square tokens last 30 days).
  */
 // deno-lint-ignore no-explicit-any
 export async function squareAuth(sb: any): Promise<SquareAuth | null> {
   // @ts-ignore Deno global in edge functions
   const env = (k: string) => Deno.env.get(k) ?? '';
   const base = squareBase(env('SQUARE_ENV'));
-  if (env('SQUARE_ACCESS_TOKEN') && env('SQUARE_LOCATION_ID')) {
-    return { base, token: env('SQUARE_ACCESS_TOKEN'), locationId: env('SQUARE_LOCATION_ID') };
+  const fixed = env('SQUARE_ACCESS_TOKEN');
+  if (fixed) {
+    if (env('SQUARE_LOCATION_ID')) return { base, token: fixed, locationId: env('SQUARE_LOCATION_ID') };
+    if (found?.token !== fixed) {
+      try {
+        const id = mainLocation<{ id?: string; status?: string }>((await squareFetch(base, fixed, '/v2/locations')).locations)?.id;
+        found = id ? { token: fixed, locationId: id } : null;
+      } catch { found = null; }   // a bad token reads as "not connected", never as a crash
+    }
+    return found ? { base, token: fixed, locationId: found.locationId } : null;
   }
   const { data: c } = await sb.from('square_connection').select('*').eq('id', 1).maybeSingle();
   if (!c?.access_token || !c?.location_id) return null;

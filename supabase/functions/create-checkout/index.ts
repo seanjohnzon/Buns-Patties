@@ -7,7 +7,7 @@
 //
 // Secrets: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, PUBLIC_SITE_URL,
 //          SQUARE_ENV, and either the owner's connection (square-oauth) or, in
-//          sandbox, SQUARE_ACCESS_TOKEN + SQUARE_LOCATION_ID.
+//          sandbox, SQUARE_ACCESS_TOKEN (its location is looked up).
 import { buildOrder } from '../_shared/build-order.ts';
 import { admin, caller, cors, json } from '../_shared/http.ts';
 import { acceptSquareTotal, e164, squareAuth, squareFetch, squareOrder } from '../_shared/square.ts';
@@ -42,12 +42,19 @@ Deno.serve(async (req) => {
     const sq = await squareAuth(sb);
     if (!sq) return cancel('Card payments are not connected yet. Please pay at the window.', 409);
 
-    const site = Deno.env.get('PUBLIC_SITE_URL') ?? '';
+    // Where Square sends the customer after paying. With no site set yet (a
+    // fresh test project) there is nowhere to send them, and a half address
+    // makes Square refuse the whole payment, so it is left out: Square shows its
+    // own "paid" page and the app picks the order up from the webhook.
+    const site = (Deno.env.get('PUBLIC_SITE_URL') ?? '').replace(/\/+$/, '');
     const link = await squareFetch(sq.base, sq.token, '/v2/online-checkout/payment-links', {
       body: {
         idempotency_key: built.orderId,
         order: squareOrder({ orderId: built.orderId, lines: built.lines, tip: built.tip, pickupName: built.pickupName, pickupAt: built.pickupAt }, sq.locationId),
-        checkout_options: { redirect_url: `${site}/order/${built.orderId}?paid=1`, allow_tipping: false, ask_for_shipping_address: false },
+        checkout_options: {
+          ...(site ? { redirect_url: `${site}/order/${built.orderId}?paid=1` } : {}),
+          allow_tipping: false, ask_for_shipping_address: false,
+        },
         pre_populated_data: { buyer_phone_number: e164(built.phone) },
         payment_note: `App order for ${built.pickupName ?? 'pickup'} (${built.orderId.slice(0, 8)})`,
       },
