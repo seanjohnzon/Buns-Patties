@@ -21,15 +21,16 @@ const ABANDONED_MIN = 60;
 const LOOKBACK_DAYS = 3;
 
 /**
- * Only the cron job may run the sweep. If RECONCILE_SECRET is set on the
- * function, that is the secret. Otherwise the database is asked whether the
- * one it was sent matches the one in its Vault. No secret sent, no sweep.
+ * Only the cron job may run the sweep. The database is asked whether the secret
+ * it was sent matches the one in its Vault. RECONCILE_SECRET, if set on the
+ * function, is a second key for running the sweep by hand; setting it never
+ * locks the cron job out. No secret sent, no sweep.
  */
 // deno-lint-ignore no-explicit-any
 async function allowed(sb: any, sent: string | null) {
   if (!sent) return false;
-  const fixedSecret = Deno.env.get('RECONCILE_SECRET');
-  if (fixedSecret) return sent === fixedSecret;
+  const byHand = Deno.env.get('RECONCILE_SECRET');
+  if (byHand && sent === byHand) return true;
   const { data, error } = await sb.rpc('reconcile_secret_ok', { p_secret: sent });
   return !error && data === true;
 }

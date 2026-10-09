@@ -46,6 +46,10 @@ test('only the cron job can run the payment sweep, and nobody ever handles its s
   assert.match(sweep, /if \(!sent\) return false;/);
   assert.match(sweep, /if \(!\(await allowed\(sb, req\.headers\.get\('x-reconcile-secret'\)\)\)\) \{\s*return new Response\('no', \{ status: 401 \}\);/);
   assert.match(sweep, /sb\.rpc\('reconcile_secret_ok', \{ p_secret: sent \}\)/);
+  // A by-hand secret on the function is a second key. It must never replace the
+  // cron job's own, or setting it would silently stop the sweep.
+  assert.match(sweep, /if \(byHand && sent === byHand\) return true;/);
+  assert.doesNotMatch(sweep, /if \(\w+\) return sent === \w+;/);
   // The database answers yes or no; it never hands the secret out, and only the server may ask.
   const fn = schema.slice(schema.indexOf('create or replace function reconcile_secret_ok('), schema.indexOf('-- ---------- campaigns'));
   assert.match(fn, /returns boolean/);
