@@ -1,0 +1,38 @@
+# Proves the website builds before the host tries. Runs on every push to the
+# test branch and to main, with the same command the host (Netlify) runs.
+# The database address here is a stand-in: this job only checks that the build
+# works and that the pages a customer lands on after paying are in it.
+name: Site build
+
+on:
+  push:
+    branches: [test-env, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build the website
+        run: npm run build:web
+        env:
+          EXPO_PUBLIC_ENV: sit
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: stand-in
+      - name: The pages a customer comes back to are there
+        run: |
+          test -f dist/index.html
+          test -f "dist/order/[id].html"
+          test -f "dist/item/[id].html"
+          du -sh dist
