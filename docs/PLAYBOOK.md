@@ -72,45 +72,51 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 - .com wholesale price rises 1 Nov 2026 (and up to 7% a year after). Budget $23 a year at GoDaddy.
 - Apple and Google both reject near-identical apps (4.3). Each client needs his own branding, menu and screenshots.
 
-## 7. Next plan: the customer needs almost nothing to start (10 Oct — a direction, not built)
+## 7. Onboarding plan (decided 10 Oct, not built yet)
 
-Cihan's direction: a customer should need very little to get going. We carry the Apple
-and Google accounts ourselves, so nobody waits on Apple. The intake is what starts the
-work: each answer triggers a job. Copy what already works at Owner.com and the others,
-down to their forms and steps; invent nothing. Plan it first, then build the intake.
-The automation behind it ("the rails") can come after.
+The plan is one document: **Proud Merchant Onboarding Plan**,
+https://claude.ai/artifact/FATbMQ62K8C2WMvANjnBL7. This section is its summary.
 
-What the others do (sources are in the competitor doc, "Ordering App Competitors"):
+**Decided: we copy Owner.com.** On Apple the customer keeps his own account and invites
+us as Admin. We do not put client apps under our own Apple account: Per Diem and Craver do,
+it is fast, and it goes against Apple's rule 4.2.6. Not a risk we take now.
 
-| Path | Who | How long | The catch |
+| Path on Apple | Who | How long | The catch |
 |---|---|---|---|
-| The business enrols with Apple itself and invites the vendor as Admin | Owner.com, Toast, ChowNow (iPhone), Flipdish | Toast budgets about six weeks | Slow, and the customer does the paperwork: D-U-N-S, Apple's phone call, $99 a year |
-| Every client's app sits under the vendor's own account | Per Diem, Craver (the store shows them as the seller) | 24 hours to a few days | Apple's rule 4.2.6 says a template app must be submitted by the business itself. They ship this way anyway. If Apple objects, every client is on the one account |
+| The business enrols itself and invites the vendor as Admin | Owner.com, Toast, ChowNow, Flipdish | Toast budgets about six weeks | Slow, and the customer does the paperwork: D-U-N-S, $99 a year |
+| Every client's app under the vendor's own account | Per Diem, Craver | 24 hours to a few days | Against the wording of 4.2.6. Every client sits on one account |
 
-What the fast path needs from us, and it has lead time:
+**What Owner.com does that we do not do yet** (read on 10 Oct, sources in the plan):
 
-- Apple Developer Program as an **Organization** under Sahin LLC (D-U-N-S first), so the
-  store shows the company as the seller and not a person's name. Check what kind of
-  account the one we use today is.
-- Google Play as an Organization too. To check: a personal Play account has to run a
-  closed test with real testers for two weeks before it may publish at all.
-- The real bundle id (`com.<client>.app`) would live on our team. Moving an app to the
-  client's own account later is an Apple app transfer. Today's rule (never upload the
-  real id from our side) changes if we go this way.
+- Android: nothing is asked of the restaurant. About 3,080 restaurant apps sit under
+  Owner.com's own Google Play account (AppGoblin's count).
+- Apple: role Admin, invited at an address the specialist gives, plus a one-time
+  "Request Access" for the API so the app can be updated without asking again.
+- A setup to-do list in the customer's dashboard: small tasks in order, "Next task",
+  a count of what is missing. A specialist does the rest.
 
-Intake that starts the work:
+**What we build:** the same to-do list, in the customer's account on proudmerchant.com.
 
-- The fastest vendors make "connect Square" the intake. Orda says "launch in 5 minutes";
-  Per Diem: connect Square, their team builds, test orders, go live, QR stickers. Menu,
-  hours, location and logo come out of Square. We already have the Allow button
-  (`square-oauth`).
-- A customer can start on `<client>.proudmerchant.com` and bring his own domain later.
+- The Food Truck sheet (`tools/client-sheet/`) is the first template. It moves onto the
+  domain as it is; boxes save to a database, one by one.
+- One company database (Supabase project `proud-merchant`), separate from every client's
+  app database: businesses, people, templates, answers, tasks, jobs, events, files.
+- A finished task adds the jobs its template lists. Jobs are done by hand from our team
+  page first, then automated one at a time. The customer's side does not change.
+- Addresses: `proudmerchant.com` (front page, Get started), `/account` (his list),
+  `/team` (ours), `<client>.test.proudmerchant.com` (test sites),
+  `<client>.proudmerchant.com` (live until he has his own address).
 
-Order of work: (1) take apart the onboarding of Owner.com, Per Diem, Craver, Orda and
-ChowNow: every question they ask and every step after it; (2) our intake, one field per
-job it triggers; (3) build the intake; (4) the rails. If this plan is adopted it replaces
-stage 5, the Apple and Google sections of the client sheet, and "the client buys his
-domain first".
+**Build order:** (1) the Buns & Patties test site, (2) the intake on our domain with
+Serdar's answers carried over, (3) Get started for a new business, (4) the rails, one job
+at a time, (5) Restaurant and Gas station templates.
+
+**Open, each with a pick, waiting on Cihan:** Android under our own Google Play account
+(yes; needs a D-U-N-S for Sahin LLC and a company account, $25 once); the Apple invite as
+Admin to `apps@proudmerchant.com` plus API access (yes); sign-in by email and a code, no
+password (yes); sole proprietors get website and Android first (Apple's company enrolment
+needs a legal entity); the free database plan until the first outside customer (yes).
+Until these are answered the client sheet stays as it is.
 
 ---
 
