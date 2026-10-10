@@ -2,6 +2,24 @@
   command = "npm run build:web"
   publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "22"
+
+# The branch decides which database the website talks to.
+#
+#   test-env   the test project (Supabase "buns-patties-test"), Square sandbox,
+#              test sign-in codes. Nothing real is charged.
+#
+# Connect the repo on Netlify, choose the branch, deploy: nothing to type in.
+# These are public values. Expo writes every EXPO_PUBLIC_ value into the pages a
+# browser downloads, and the key is Supabase's publishable key, which is made to
+# be seen. A secret key never goes in this file (tests/security.test.mjs checks).
+# The live site gets its own block when it has a live project.
+[context.test-env.environment]
+  EXPO_PUBLIC_ENV = "sit"
+  EXPO_PUBLIC_SUPABASE_URL = "https://ysochqypjpmuhackmzqw.supabase.co"
+  EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_zHvThsRMst2Jjk3A2Lsutg_VeEap0h-"
+
 # Expo Router exports dynamic routes as literal [id] files. Without these, a
 # customer coming back from Stripe to /order/<id> gets a 404 and thinks they
 # have lost their money.

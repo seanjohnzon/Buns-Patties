@@ -83,3 +83,21 @@ test('a stranger cannot call the owner\'s or the kitchen\'s functions, or a trig
   const owners = [...new Set([...schema.matchAll(/create or replace function (owner_\w+)\(/g)].map((m) => m[1]))];
   for (const name of owners) assert.ok(signedInOnly.includes(name + '('), `${name} is missing from the signed-in-only list`);
 });
+
+test('the site settings kept in the repo are public ones only', () => {
+  // Expo writes every EXPO_PUBLIC_ value into the pages a browser downloads, so
+  // netlify.toml may only ever hold values that are meant to be seen.
+  const toml = readFileSync('netlify.toml', 'utf8');
+  const names = [...toml.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=/gm)].map((m) => m[1]);
+  assert.ok(names.length > 0, 'no settings found in netlify.toml');
+  for (const name of names) {
+    assert.match(name, /^(EXPO_PUBLIC_[A-Z0-9_]+|NODE_VERSION)$/, `${name} does not belong in netlify.toml`);
+  }
+  // No secret key, no Square token, and no long-lived JWT (a service key looks like one).
+  assert.doesNotMatch(toml, /sb_secret_|EAAA[A-Za-z0-9_-]{10,}|sq0[a-z]{3}-|eyJ[A-Za-z0-9_-]{10,}\./);
+  // The test branch talks to the test project with a publishable key, and is never in demo mode.
+  const testSite = toml.slice(toml.indexOf('[context.test-env.environment]'), toml.indexOf('[[redirects]]'));
+  assert.match(testSite, /EXPO_PUBLIC_ENV = "sit"/);
+  assert.match(testSite, /EXPO_PUBLIC_SUPABASE_URL = "https:\/\/[a-z0-9]{20}\.supabase\.co"/);
+  assert.match(testSite, /EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_[A-Za-z0-9_-]+"/);
+});

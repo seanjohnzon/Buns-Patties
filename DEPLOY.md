@@ -121,6 +121,18 @@ npm run build:web        # static export into dist/
 npm run serve:web        # check it locally first
 ```
 
+**On Netlify the branch decides which database the site talks to.** `netlify.toml`
+carries the public settings for the test branch (`[context.test-env.environment]`:
+the test project's address, its publishable key, `EXPO_PUBLIC_ENV=sit`). Connect the
+repo, choose the branch `test-env`, deploy: nothing to type in. They are public
+values (Expo writes every `EXPO_PUBLIC_` value into the pages a browser downloads).
+A secret key never goes in that file, and a test stops it. The live site gets its
+own block when it has a live project.
+
+Every push to `test-env` or `main` also builds the site on GitHub first
+(`.github/workflows/site-build.yml`, the Actions tab), so a broken build shows up
+there and not as a failed deploy.
+
 **Dynamic routes need a rewrite or they 404.** Expo Router exports them as
 literal `[id]` files, so `/order/<id>` — the address Square returns customers to
 after paying — does not resolve on its own. A customer would see a 404 and think
