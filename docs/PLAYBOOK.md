@@ -1,4 +1,8 @@
-# Delivery playbook — ordering apps for restaurants and food trucks
+# Proud Merchant — delivery playbook
+
+**Proud Merchant** (proudmerchant.com) is the name clients see. Sahin LLC is the company
+behind it. We build ordering and loyalty apps for any small business, the way Owner.com
+does for restaurants. Food trucks are only where we start.
 
 The same system for every client. Decided once, costed once (checked against vendor
 pages, September 2026). A new client is this repo copied, one sheet sent, and the
@@ -15,7 +19,7 @@ steps below run in order.
 | Square Developer | the one app every restaurant presses Allow on; payment webhooks | free, no Square review | ✅ account, sandbox keys · ⏳ production keys at stage 4 |
 | Twilio | sign-in text codes (Verify — no carrier registration per client) | pay as you go; one **Primary Compliance Profile**, approval ≤48h, before the first live client | ❌ sign up |
 | Netlify | hosts each client's website | Free to start (300 credits, pauses at the cap); **Pro $20/mo** from the second live client. Not Vercel Hobby, not Cloudflare Free (their terms don't allow it) | ❌ sign up |
-| GoDaddy | our own brand domain. Clients buy theirs themselves, in their own name, from the button on their sheet (a registrar they have heard of) | $2.99 the first year for a new customer (code GDWELCOME, 1-year term), then $22.99/yr. Checked on godaddy.com, 9 Oct 2026 | ❌ buy once the name is chosen |
+| GoDaddy | our own brand domain, **proudmerchant.com**. Clients buy theirs themselves, in their own name, from the button on their sheet (a registrar they have heard of) | $2.99 the first year for a new customer (code GDWELCOME, 1-year term), then $22.99/yr. Checked on godaddy.com, 9 Oct 2026 | ⏳ name chosen 10 Oct (free at GoDaddy that day) · Cihan buys it |
 
 ## 2. What each client costs
 
