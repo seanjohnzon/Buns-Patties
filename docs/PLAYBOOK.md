@@ -72,6 +72,46 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 - .com wholesale price rises 1 Nov 2026 (and up to 7% a year after). Budget $23 a year at GoDaddy.
 - Apple and Google both reject near-identical apps (4.3). Each client needs his own branding, menu and screenshots.
 
+## 7. Next plan: the customer needs almost nothing to start (10 Oct — a direction, not built)
+
+Cihan's direction: a customer should need very little to get going. We carry the Apple
+and Google accounts ourselves, so nobody waits on Apple. The intake is what starts the
+work: each answer triggers a job. Copy what already works at Owner.com and the others,
+down to their forms and steps; invent nothing. Plan it first, then build the intake.
+The automation behind it ("the rails") can come after.
+
+What the others do (sources are in the competitor doc, "Ordering App Competitors"):
+
+| Path | Who | How long | The catch |
+|---|---|---|---|
+| The business enrols with Apple itself and invites the vendor as Admin | Owner.com, Toast, ChowNow (iPhone), Flipdish | Toast budgets about six weeks | Slow, and the customer does the paperwork: D-U-N-S, Apple's phone call, $99 a year |
+| Every client's app sits under the vendor's own account | Per Diem, Craver (the store shows them as the seller) | 24 hours to a few days | Apple's rule 4.2.6 says a template app must be submitted by the business itself. They ship this way anyway. If Apple objects, every client is on the one account |
+
+What the fast path needs from us, and it has lead time:
+
+- Apple Developer Program as an **Organization** under Sahin LLC (D-U-N-S first), so the
+  store shows the company as the seller and not a person's name. Check what kind of
+  account the one we use today is.
+- Google Play as an Organization too. To check: a personal Play account has to run a
+  closed test with real testers for two weeks before it may publish at all.
+- The real bundle id (`com.<client>.app`) would live on our team. Moving an app to the
+  client's own account later is an Apple app transfer. Today's rule (never upload the
+  real id from our side) changes if we go this way.
+
+Intake that starts the work:
+
+- The fastest vendors make "connect Square" the intake. Orda says "launch in 5 minutes";
+  Per Diem: connect Square, their team builds, test orders, go live, QR stickers. Menu,
+  hours, location and logo come out of Square. We already have the Allow button
+  (`square-oauth`).
+- A customer can start on `<client>.proudmerchant.com` and bring his own domain later.
+
+Order of work: (1) take apart the onboarding of Owner.com, Per Diem, Craver, Orda and
+ChowNow: every question they ask and every step after it; (2) our intake, one field per
+job it triggers; (3) build the intake; (4) the rails. If this plan is adopted it replaces
+stage 5, the Apple and Google sections of the client sheet, and "the client buys his
+domain first".
+
 ---
 
 ## Buns & Patties — where it stands (9 Oct)
