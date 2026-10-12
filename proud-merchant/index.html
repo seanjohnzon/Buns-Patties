@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Proud Merchant</title>
+<meta name="description" content="Your own ordering and rewards app, under your name. Proud Merchant builds it for small businesses. Food trucks first.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --paper:#F6F4EE; --card:#FFFFFF; --ink:#141A22; --ink2:#4F5863; --ink3:#8A919B;
+    --line:#DCD8CF; --brass:#A8711A; --done:#2F6B4F; --tint:#ECE8DF; --phone:#141A22;
+    --sans:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --paper:#15181C; --card:#1E2228; --ink:#F2EFE8; --ink2:#AAB0B8; --ink3:#767D86;
+      --line:#2E333A; --brass:#D59A3A; --done:#6DBF93; --tint:#242930; --phone:#0C0E11;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --paper:#15181C; --card:#1E2228; --ink:#F2EFE8; --ink2:#AAB0B8; --ink3:#767D86;
+    --line:#2E333A; --brass:#D59A3A; --done:#6DBF93; --tint:#242930; --phone:#0C0E11;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.5;padding-inline:16px;padding-block:0 48px}
+  a{color:inherit}
+  .wrap{max-width:960px;margin-inline:auto}
+
+  header.bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:18px;flex-wrap:wrap}
+  .brand{font-weight:800;font-size:20px;letter-spacing:-.01em;text-decoration:none;display:flex;align-items:center;gap:9px}
+  .brand i{width:14px;height:14px;border-radius:3px;background:var(--brass);display:inline-block;transform:rotate(45deg)}
+  nav.links{display:flex;gap:18px;font-size:15.5px;flex-wrap:wrap}
+  nav.links a{text-decoration:none;color:var(--ink2)}
+  nav.links a.cta{color:var(--ink);font-weight:600}
+
+  .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center;padding-block:40px 56px}
+  h1{font-size:clamp(38px,6vw,64px);line-height:1;font-weight:800;letter-spacing:-.025em;margin:0 0 18px;text-wrap:balance;font-variation-settings:"opsz" 96}
+  .lede{font-size:clamp(18px,2.2vw,21px);color:var(--ink2);margin:0 0 26px;max-width:34ch;text-wrap:pretty}
+  .btn{display:inline-block;background:var(--ink);color:var(--paper);font-weight:600;font-size:17px;padding:13px 22px;border-radius:8px;text-decoration:none;border:0;cursor:pointer;font-family:inherit}
+  .btn.brass{background:var(--brass);color:#fff}
+  .aside{margin:12px 0 0;color:var(--ink2);font-size:15px}
+
+  /* The app, drawn: the thing he is buying. */
+  .phone{justify-self:center;width:min(300px,100%);aspect-ratio:9/18.5;border-radius:36px;background:var(--phone);padding:12px;box-shadow:0 30px 60px -30px rgba(0,0,0,.45);position:relative}
+  .phone .screen{background:var(--card);border-radius:26px;height:100%;padding:34px 16px 16px;display:grid;grid-template-rows:auto auto 1fr auto;gap:12px;overflow:hidden;color:var(--ink)}
+  .phone .notch{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:84px;height:22px;border-radius:12px;background:var(--phone)}
+  .app-name{font-weight:800;font-size:20px;letter-spacing:-.01em;line-height:1.1}
+  .app-name small{display:block;font-weight:400;font-size:12.5px;color:var(--ink2);margin-top:2px}
+  .stamps{background:var(--tint);border-radius:12px;padding:10px 12px}
+  .stamps b{font-size:12.5px;display:block;margin-bottom:7px}
+  .dots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .dots i{aspect-ratio:1;border-radius:50%;border:2px solid var(--brass);display:block}
+  .dots i.on{background:var(--brass)}
+  .items{display:grid;gap:8px;align-content:start}
+  .item{display:flex;justify-content:space-between;font-size:13.5px;border-bottom:1px solid var(--line);padding-bottom:7px}
+  .item span:last-child{font-variant-numeric:tabular-nums;color:var(--ink2)}
+  .order{background:var(--ink);color:var(--paper);text-align:center;border-radius:10px;padding:11px;font-weight:600;font-size:14px}
+
+  section.block{padding-block:40px;border-top:1px solid var(--line)}
+  h2{font-size:clamp(26px,3.6vw,36px);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:0 0 10px;text-wrap:balance}
+  .sub{color:var(--ink2);margin:0 0 26px;max-width:52ch}
+  ol.steps{list-style:none;padding:0;margin:0;display:grid;gap:0;counter-reset:s;max-width:620px}
+  ol.steps li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:14px;padding:16px 0;border-top:1px solid var(--line);align-items:start}
+  ol.steps li::before{content:counter(s);font-weight:800;font-size:22px;color:var(--brass);line-height:1.2;font-variant-numeric:tabular-nums}
+  ol.steps b{display:block;font-size:18px;margin-bottom:2px}
+  ol.steps p{margin:0;color:var(--ink2);font-size:15.5px}
+  ol.steps .who{font-size:13px;color:var(--ink3);margin-top:4px}
+
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;max-width:620px;font-size:16px}
+  td{padding:10px 12px 10px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  td.r{text-align:right;padding-right:0;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}
+  td span{color:var(--ink3);font-size:13.5px;display:block}
+
+  form.start{display:grid;gap:14px;max-width:460px}
+  .f{display:grid;gap:6px}
+  .f label{font-weight:600;font-size:15px}
+  .f input{font:inherit;font-size:17px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:11px 12px;width:100%}
+  .f .opt{color:var(--ink3);font-weight:400;font-size:13.5px}
+  .choice{display:flex;gap:8px;flex-wrap:wrap}
+  .choice button{font:inherit;font-size:15.5px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:7px 15px;cursor:pointer}
+  .choice button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:600}
+  .choice button:disabled{opacity:.45;cursor:default}
+  .msg{color:var(--ink2);font-size:15px;min-height:1.4em;margin:0}
+  .msg.err{color:#B3261E}
+  :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+  footer{padding-top:28px;border-top:1px solid var(--line);color:var(--ink2);font-size:14.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  @media (max-width:720px){
+    .hero{grid-template-columns:1fr;gap:30px;padding-block:24px 40px}
+    .phone{width:min(240px,100%)}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .dots i.on:last-of-type{animation:stamp .5s ease-out 1}
+    @keyframes stamp{from{transform:scale(1.6);opacity:0}to{transform:scale(1);opacity:1}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <a class="brand" href="./"><i></i>Proud Merchant</a>
+    <nav class="links" aria-label="Site">
+      <a href="#how">How it works</a>
+      <a href="#cost">What it costs</a>
+      <a class="cta" href="#start">Get started</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Your name on the door. Your app in their pocket.</h1>
+      <p class="lede">We build the ordering and rewards app for your business, published under your own name. You keep every customer and every dollar.</p>
+      <a class="btn brass" href="#start">Get started</a>
+      <p class="aside">Free for our first clients. Food trucks first; any small business welcome.</p>
+    </div>
+    <div class="phone" aria-label="A customer's phone showing the Buns &amp; Patties app">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="app-name">Buns &amp; Patties<small>Halal smash burgers · Houston</small></div>
+        <div class="stamps"><b>Stamp card · 7 of 10</b>
+          <div class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="items">
+          <div class="item"><span>The OG</span><span>$9.50</span></div>
+          <div class="item"><span>Wake N Smash</span><span>$10.50</span></div>
+          <div class="item"><span>Fries</span><span>$3.50</span></div>
+        </div>
+        <div class="order">Order for pickup</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="how">
+    <h2>How it works</h2>
+    <p class="sub">A short list in your account. You fill in what only you can, and we build everything else.</p>
+    <ol class="steps">
+      <li><div><b>Get started</b><p>Your business name, your name and a mobile number. Two minutes.</p><span class="who">You</span></div></li>
+      <li><div><b>Fill in your list</b><p>Your legal name, your web address, your menu, where you park. Each box saves as you type. The slow ones, like Apple, start on day one.</p><span class="who">You, over a few days</span></div></li>
+      <li><div><b>We build</b><p>Your website, your app and your rewards, from what you gave us. We say what we are doing and when.</p><span class="who">Us</span></div></li>
+      <li><div><b>You look it over</b><p>A test app on your own phone. You order, you check, you say go.</p><span class="who">You</span></div></li>
+      <li><div><b>Live</b><p>Your website goes live first, with a QR sticker for the truck. The app follows when Apple and Google approve it.</p><span class="who">Us</span></div></li>
+    </ol>
+  </section>
+
+  <section class="block" id="cost">
+    <h2>What it costs you</h2>
+    <p class="sub">Everything is in your own name, so the bills are yours and small. We are free for our first clients.</p>
+    <div class="scroll"><table><tbody>
+      <tr><td>Apple Developer<span>Apple, once a year</span></td><td class="r">$99 / year</td></tr>
+      <tr><td>Google Play<span>Google, once</span></td><td class="r">$25 once</td></tr>
+      <tr><td>Card payments<span>Square or Stripe, per app order</span></td><td class="r">2.9% + 30¢</td></tr>
+      <tr><td>Web address<span>GoDaddy, in your name</span></td><td class="r">~$23 / year</td></tr>
+      <tr><td>Building and running the app<span>Proud Merchant</span></td><td class="r">Free, for now</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="block" id="start">
+    <h2>Get started</h2>
+    <p class="sub">Three things. Then you get a private link to your list.</p>
+    <form class="start" id="startForm" novalidate>
+      <div class="f"><label for="bname">Business name</label><input id="bname" type="text" autocomplete="organization" placeholder="As your customers know it" required></div>
+      <div class="f"><div><span style="font-weight:600;font-size:15px">Kind of business</span></div>
+        <div class="choice" role="group" aria-label="Kind of business" id="kind">
+          <button type="button" data-kind="food-truck" aria-pressed="true">Food truck</button>
+          <button type="button" disabled title="Coming next">Restaurant</button>
+          <button type="button" disabled title="Coming next">Gas station</button>
+        </div></div>
+      <div class="f"><label for="pname">Your name</label><input id="pname" type="text" autocomplete="name" required></div>
+      <div class="f"><label for="phone">Mobile number</label><input id="phone" type="tel" autocomplete="tel" inputmode="tel" required></div>
+      <div class="f"><label for="email">Email <span class="opt">optional</span></label><input id="email" type="email" autocomplete="email"></div>
+      <div><button class="btn brass" type="submit" id="go">Get my link</button></div>
+      <p class="msg" id="msg"></p>
+    </form>
+    <p class="aside">Already started? Open the link we sent you. Nothing to sign in to.</p>
+  </section>
+
+  <footer>
+    <span>Proud Merchant · Sahin LLC · Houston</span>
+    <span>cihanshah.sahin@gmail.com</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var API = window.PM_API || {
+    url: 'https://ecfscfmmgpefnpjqwbye.supabase.co', key: 'sb_publishable_3frQgbkFaZt7nCgVhHqdbQ_IwDF7jQd',
+    rpc: function(name, body){
+      return fetch(this.url + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: this.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.message || 'Something went wrong.'); return j; }); });
+    }
+  };
+  var kind = 'food-truck';
+  document.querySelectorAll('#kind button[data-kind]').forEach(function(b){ b.addEventListener('click', function(){ kind = b.dataset.kind; document.querySelectorAll('#kind button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); }); }); });
+  var form = document.getElementById('startForm'), msg = document.getElementById('msg'), go = document.getElementById('go');
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = form.bname.value.trim(), who = form.pname.value.trim(), tel = form.phone.value.trim(), mail = form.email.value.trim();
+    msg.className = 'msg';
+    if (!name || !who || !tel){ msg.className = 'msg err'; msg.textContent = 'Business name, your name and a mobile number are needed.'; return; }
+    go.disabled = true; msg.textContent = 'Making your list…';
+    API.rpc('start_business', { p_name: name, p_template: kind, p_contact: who, p_phone: tel, p_email: mail })
+      .then(function(code){ msg.textContent = 'Done. Opening your list.'; location.href = 'account.html?c=' + encodeURIComponent(code); })
+      .catch(function(err){ go.disabled = false; msg.className = 'msg err'; msg.textContent = err.message; });
+  });
+})();
+</script>
+</body>
+</html>
