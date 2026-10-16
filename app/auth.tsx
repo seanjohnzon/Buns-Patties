@@ -1,4 +1,12 @@
-// Phone OTP sign-in (Supabase Auth + Twilio). Copies the reference: phone → 6-digit code → done.
+// Sign-in. Two shapes, chosen by the build:
+//
+//   SIT (EXPO_PUBLIC_ENV=sit, the TestFlight test app): no texting, no code. The
+//   test server has three ready logins, one per role, and one tap signs you in;
+//   the session stays on the phone, so you see this screen once. Dummy data and
+//   sandbox cards, so a shared password in the branch's .env is fine.
+//
+//   Everything else: phone OTP (Supabase Auth + Twilio), copying the reference:
+//   phone → 6-digit code → done. That real flow is tried in UAT.
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, TextInput, View } from 'react-native';
@@ -6,6 +14,14 @@ import { Body, Button, H1, Muted, Screen } from '@/components/ui';
 import { phoneE164, formatPhone } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
+
+const SIT_PASSWORD = process.env.EXPO_PUBLIC_SIT_LOGIN_PASSWORD;
+const SIT = process.env.EXPO_PUBLIC_ENV === 'sit' && !!SIT_PASSWORD;
+const SIT_LOGINS = [
+  { title: 'Owner', who: 'Serdar — every screen: orders, the kitchen board, menu and rewards settings', email: 'owner@buns.test' },
+  { title: 'Customer', who: 'The app as a customer sees it: order, pay with a test card, collect stamps', email: 'customer@buns.test' },
+  { title: 'Staff', who: 'The kitchen board only', email: 'staff@buns.test' },
+];
 
 export default function Auth() {
   const [phone, setPhone] = useState('');
@@ -33,6 +49,29 @@ export default function Auth() {
     setBusy(false);
     if (error) return Alert.alert('That code did not work', error.message);
     router.back();
+  }
+  async function sitSignIn(email: string) {
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password: SIT_PASSWORD! });
+    setBusy(false);
+    if (error) return Alert.alert('Could not sign in', error.message);
+    router.back();
+  }
+
+  if (SIT) {
+    return (
+      <Screen style={{ padding: 16, gap: 16 }}>
+        <H1>Who are you today?</H1>
+        <Muted>Test app: no code, no text. One tap, and you stay signed in.</Muted>
+        {SIT_LOGINS.map((l) => (
+          <View key={l.email} style={{ gap: 6 }}>
+            <Button title={l.title} disabled={busy} onPress={() => sitSignIn(l.email)} />
+            <Muted style={{ textAlign: 'center' }}>{l.who}</Muted>
+          </View>
+        ))}
+        <Body style={{ textAlign: 'center', marginTop: 12 }}>To switch, sign out from Account and come back here.</Body>
+      </Screen>
+    );
   }
 
   return (

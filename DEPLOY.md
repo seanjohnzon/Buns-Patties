@@ -29,18 +29,19 @@ shared between them — SIT's dummy orders must never touch UAT's real takings.
 Vault. There is nothing to copy anywhere: the cron job reads it to send, and
 `reconcile-orders` asks the database whether what it was sent is right.
 
-Then **Authentication → Providers → Phone**:
-- Sandbox and SIT: turn the provider on and add **Test OTP** numbers with fixed codes.
-  No Twilio, no cost: a test number never gets a text, the code is simply known.
-  The SIT logins are `+1 713 555 0100` (the owner) and `+1 713 555 0200` (a customer),
-  code `123456` for both; anyone testing types one of those as their phone number.
-- UAT: connect Twilio. Keep one test number for Apple's reviewer.
+Sign-in:
+- SIT: no phone provider at all. Run `supabase/sit-logins.sql` once: three ready
+  logins, `owner@`, `staff@` and `customer@buns.test`, one password (the branch's
+  `.env`). The test app shows three buttons instead of the phone screen; one tap and
+  the session stays on the phone. Nothing to type, nothing to text, nothing to set
+  in the dashboard.
+- UAT: **Authentication → Providers → Phone**, connect Twilio; the real phone → code
+  flow is tested there. Keep one Test OTP number for Apple's reviewer. Make the
+  first owner by hand, once:
 
-Make the first owner by hand, once:
-
-```sql
-update profiles set role = 'owner' where phone = '17135554402';  -- digits only
-```
+  ```sql
+  update profiles set role = 'owner' where phone = '17135554402';  -- digits only
+  ```
 
 ## 2. Edge functions
 

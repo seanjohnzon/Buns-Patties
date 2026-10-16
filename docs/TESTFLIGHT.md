@@ -15,9 +15,10 @@ branch decides what it runs on.
   **Account → Test controls**. No server at all. This was the first build.
 - `test-env`: the real test server. A tracked `.env` on the branch carries the SIT
   project's public settings, so a plain clone builds against it with nothing typed in.
-  Sign-in is a test number and a fixed code (DEPLOY.md, part 1), cards are Square's
-  sandbox test cards, nothing real is charged. This is the build for the SIT round:
-  the owner's requirements review and Burak's QA run on it.
+  Sign-in is one tap, Owner / Customer / Staff, no code and no text (DEPLOY.md,
+  part 1); cards are Square's sandbox test cards; nothing real is charged. This is
+  the build for the SIT round: the owner's requirements review and Burak's QA run
+  on it. The real phone sign-in is tried in UAT.
 
 `APP_VARIANT=production` builds the real app (`com.bunsandpatties.app`). That one is
 never uploaded to Samil's team, because a bundle id locks to the first team that

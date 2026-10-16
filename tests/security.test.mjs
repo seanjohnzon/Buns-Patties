@@ -102,6 +102,16 @@ test('the site settings kept in the repo are public ones only', () => {
   assert.match(testSite, /EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_[A-Za-z0-9_-]+"/);
 });
 
+test('the one-tap test sign-in exists only in a SIT build', () => {
+  // Three shared logins on dummy data are fine in SIT. The same screen in the real
+  // app would hand anyone the owner's screens, so it is gated on the build's
+  // environment and on the password, neither of which main carries.
+  const auth = readFileSync('app/auth.tsx', 'utf8');
+  assert.match(auth, /const SIT = process\.env\.EXPO_PUBLIC_ENV === 'sit' && !!SIT_PASSWORD;/);
+  assert.match(auth, /if \(SIT\) \{/);
+  assert.doesNotMatch(auth, /signInWithPassword\([^)]*password: '/, 'no password written into the app');
+});
+
 test('the app settings kept in the repo (.env) are public ones only, and the same as the site\'s', () => {
   // main has no .env: a plain clone of it runs on the phone's own test database.
   // A test branch tracks one so that a plain clone builds against that
