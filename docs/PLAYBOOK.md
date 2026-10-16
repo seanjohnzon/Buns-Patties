@@ -72,51 +72,51 @@ The website does not wait for the app stores. That is why launch is stage 4, not
 - .com wholesale price rises 1 Nov 2026 (and up to 7% a year after). Budget $23 a year at GoDaddy.
 - Apple and Google both reject near-identical apps (4.3). Each client needs his own branding, menu and screenshots.
 
-## 7. Onboarding plan (decided 10 Oct, not built yet)
+## 7. Onboarding, on rails (decided 16 Oct, built on proudmerchant.com)
 
-The plan is one document: **Proud Merchant Onboarding Plan**,
-https://claude.ai/artifact/FATbMQ62K8C2WMvANjnBL7. This section is its summary.
+The customer's list on proudmerchant.com (repo `seanjohnzon/ProudMerchant`, database `proud-merchant`).
+We copy Owner.com's shape: a to-do list in his account, our team does the building, he checks before
+anything goes live. The order comes from what Buns & Patties taught us (`docs/OWNER_NOTES.md` 10–16):
+the PDF never says what a burger comes with, what can be removed, how many sauces, what costs extra.
+We guessed, built, and he corrected a built app. Now he corrects a **draft in words** first, and the
+draft is `data/menu.seed.json` read back to him, so approved words = built app.
 
-**Decided: we copy Owner.com.** On Apple the customer keeps his own account and invites
-us as Admin. We do not put client apps under our own Apple account: Per Diem and Craver do,
-it is fast, and it goes against Apple's rule 4.2.6. Not a risk we take now.
+| # | Step | Who | Opens | Done when |
+|---|---|---|---|---|
+| 1 | Your menu and logo | him | at once | name, logo, menu files → **job: draft the menu** |
+| 2 | About your business | him | at once | hours, phone, Maps listing, story, socials, delivery apps, rewards (Maps pending at Google counts as ready) |
+| 3 | Check your menu | him | when we post the draft | every item Right → **job: build the test app** |
+| 4 | Try your app | him | when we mark it built | every screen Looks right → **approved** |
+| 5 | Payments | him | at once (costs nothing) | Square or Stripe, account email; the Connect/Allow link after approval |
+| 6 | Web address, D-U-N-S, Apple, Google | him | after approval | as before; these cost money, so only once he has approved the app |
+| 7 | Launch | both | after 5 and 6 | open |
 
-| Path on Apple | Who | How long | The catch |
-|---|---|---|---|
-| The business enrols itself and invites the vendor as Admin | Owner.com, Toast, ChowNow, Flipdish | Toast budgets about six weeks | Slow, and the customer does the paperwork: D-U-N-S, $99 a year |
-| Every client's app under the vendor's own account | Per Diem, Craver | 24 hours to a few days | Against the wording of 4.2.6. Every client sits on one account |
+**The rails.** Stages `setup → drafting → menu_check → building → app_check → approved → live`;
+`advance()` in the database moves a business along from what is in. A note on an item is a job for us;
+our reply shows under the item and he checks again. By hand from the team page first (Post the draft,
+Mark built with the links, Reply, Copy the email for this stage), automated one job at a time later,
+the draft first (PDF → the same JSON).
 
-**What Owner.com does that we do not do yet** (read on 10 Oct, sources in the plan):
+**The draft (step 3), per item:** name · price · what it comes with (cannot be removed) · already
+picked · what he chooses, with limits and extras · the shared lists once at the top (sauces, toppings,
+drinks, how every item asks). "All of these are right" per category; "Something missing?" at the bottom.
 
-- Android: nothing is asked of the restaurant. About 3,080 restaurant apps sit under
-  Owner.com's own Google Play account (AppGoblin's count).
-- Apple: role Admin, invited at an address the specialist gives, plus a one-time
-  "Request Access" for the API so the app can be updated without asking again.
-- A setup to-do list in the customer's dashboard: small tasks in order, "Next task",
-  a count of what is missing. A specialist does the rest.
+**Testing (step 4), fastest door first.** (1) The web build in his phone's browser,
+`<client>.sit.proudmerchant.com`, minutes after the build, everything but push and the icon.
+(2) TestFlight: Samil's team for now, him as internal tester (no Apple review; two emails; builds
+expire in 90 days); our own Apple Developer account from client #2, then a public link (first build
+waits for Beta App Review, usually a day). (3) Android: a direct install link. Fixes after notes go out
+as updates (`expo-updates`, not in the app yet: next chunk), so he reopens the app and it is there; a new
+build only when native parts change. The checklist follows his customers' path: Home → Menu → an item
+with choices → a test order → sign in → rewards → Account → owner screen.
 
-**What we build:** the same to-do list, in the customer's account on proudmerchant.com.
+**Serdar runs the whole thing**, not "already done": steps 1–2 prefilled, his draft (15 items) on
+step 3, B&P Test marked built so step 4 opens the moment his draft is all Right, then Square.
 
-- The Food Truck sheet (`tools/client-sheet/`) is the first template. It moves onto the
-  domain as it is; boxes save to a database, one by one.
-- One company database (Supabase project `proud-merchant`), separate from every client's
-  app database: businesses, people, templates, answers, tasks, jobs, events, files.
-- A finished task adds the jobs its template lists. Jobs are done by hand from our team
-  page first, then automated one at a time. The customer's side does not change.
-- Addresses: `proudmerchant.com` (front page, Get started), `/account` (his list),
-  `/team` (ours), `<client>.test.proudmerchant.com` (test sites),
-  `<client>.proudmerchant.com` (live until he has his own address).
-
-**Build order:** (1) the Buns & Patties test site, (2) the intake on our domain with
-Serdar's answers carried over, (3) Get started for a new business, (4) the rails, one job
-at a time, (5) Restaurant and Gas station templates.
-
-**Open, each with a pick, waiting on Cihan:** Android under our own Google Play account
-(yes; needs a D-U-N-S for Sahin LLC and a company account, $25 once); the Apple invite as
-Admin to `apps@proudmerchant.com` plus API access (yes); sign-in by email and a code, no
-password (yes); sole proprietors get website and Android first (Apple's company enrolment
-needs a legal entity); the free database plan until the first outside customer (yes).
-Until these are answered the client sheet stays as it is.
+Still to build: `expo-updates` + the `sit` channel and the web test address in this repo; the email
+sender (Resend from hello@proudmerchant.com, two DNS records at GoDaddy); the automated draft.
+The earlier reasoning and the Apple paths table are in the plan document,
+https://claude.ai/artifact/FATbMQ62K8C2WMvANjnBL7.
 
 ---
 
