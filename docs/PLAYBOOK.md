@@ -89,12 +89,13 @@ draft is `data/menu.seed.json` read back to him, so approved words = built app.
 | 4 | Try your app | him | when we mark it built | every screen Looks right → **approved** |
 | 5 | Payments | him | at once (costs nothing) | Square or Stripe, account email; the Connect/Allow link after approval |
 | 6 | Web address, D-U-N-S, Apple, Google | him | after approval | as before; these cost money, so only once he has approved the app |
-| 7 | Launch | both | after 5 and 6 | open |
+| 7 | Final test | him and our tester | when we mark it ready: his address live, his Square/Stripe connected, the app on his phone | 16 checks on the real thing, positive and negative (wrong code, back out of paying, closed, sold out, a second free-item claim), each Pass or Fail with a note, on both sides |
+| 8 | Launch | both | after 7 | open |
 
-**The rails.** Stages `setup → drafting → menu_check → building → app_check → approved → live`;
+**The rails.** Stages `setup → drafting → menu_check → building → app_check → approved → uat → uat_passed → live`;
 `advance()` in the database moves a business along from what is in. A note on an item is a job for us;
 our reply shows under the item and he checks again. By hand from the team page first (Post the draft,
-Mark built with the links, Reply, Copy the email for this stage), automated one job at a time later,
+Mark built with the links, Final test ready, the tester's Pass/Fail column, Reply, Copy the email for this stage), automated one job at a time later,
 the draft first (PDF → the same JSON).
 
 **The draft (step 3), per item:** name · price · what it comes with (cannot be removed) · already
