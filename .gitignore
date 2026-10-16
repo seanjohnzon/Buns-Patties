@@ -1,8 +1,9 @@
 # dependencies
 node_modules/
 
-# secrets — never commit these
-.env
+# secrets — never commit these. `.env` itself is tracked: on a test branch it
+# carries that environment's public settings (read the file), never a secret
+# (tests/security.test.mjs checks). Your own overrides go in .env.local.
 .env.*
 !.env.example
 

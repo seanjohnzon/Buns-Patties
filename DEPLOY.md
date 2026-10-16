@@ -10,7 +10,8 @@ shared between them — SIT's dummy orders must never touch UAT's real takings.
 | UAT | bunsandpattieshtx.com | UAT project | **live, the owner's Square** |
 
 > Test builds for phones go through TestFlight on Samil's Apple account — see
-> [docs/TESTFLIGHT.md](docs/TESTFLIGHT.md).
+> [docs/TESTFLIGHT.md](docs/TESTFLIGHT.md). On `test-env` a tracked `.env` carries the
+> SIT project's public settings, so his plain clone builds against the test server.
 
 ---
 
@@ -29,7 +30,10 @@ Vault. There is nothing to copy anywhere: the cron job reads it to send, and
 `reconcile-orders` asks the database whether what it was sent is right.
 
 Then **Authentication → Providers → Phone**:
-- Sandbox and SIT: add a **Test OTP** number and fixed code. No Twilio, no cost.
+- Sandbox and SIT: turn the provider on and add **Test OTP** numbers with fixed codes.
+  No Twilio, no cost: a test number never gets a text, the code is simply known.
+  The SIT logins are `+1 713 555 0100` (the owner) and `+1 713 555 0200` (a customer),
+  code `123456` for both; anyone testing types one of those as their phone number.
 - UAT: connect Twilio. Keep one test number for Apple's reviewer.
 
 Make the first owner by hand, once:
@@ -127,7 +131,9 @@ the test project's address, its publishable key, `EXPO_PUBLIC_ENV=sit`). Connect
 repo, choose the branch `test-env`, deploy: nothing to type in. They are public
 values (Expo writes every `EXPO_PUBLIC_` value into the pages a browser downloads).
 A secret key never goes in that file, and a test stops it. The live site gets its
-own block when it has a live project.
+own block when it has a live project. The phone build reads the same three values
+from a tracked `.env` on the branch (Expo loads it when Xcode bundles the app), and
+the same test keeps the two files equal and public.
 
 Every push to `test-env` or `main` also builds the site on GitHub first
 (`.github/workflows/site-build.yml`, the Actions tab), so a broken build shows up
@@ -143,15 +149,19 @@ before launch**.
 Set `EXPO_PUBLIC_SITE_URL` and the `PUBLIC_SITE_URL` secret to the real address,
 exactly. Square sends customers back to it.
 
-## 4. Native apps, later
+## 4. Native apps
+
+TestFlight builds are made on Samil's Mac with Xcode, free: [SAMIL.md](SAMIL.md) is
+the handoff his Claude follows, [docs/TESTFLIGHT.md](docs/TESTFLIGHT.md) says why.
+`eas.json` keeps the same profiles for Expo's paid build service, if ever needed:
 
 ```bash
 npx eas build --profile sit --platform ios     # TestFlight
 npx eas build --profile uat --platform all     # stores
 ```
 
-Profiles are in `eas.json`. Needs the Apple ($99/yr) and Google ($25) accounts,
-which take days to approve — start them well before you need them.
+The stores need the Apple ($99/yr) and Google ($25) accounts, which take days to
+approve — start them well before you need them.
 
 ---
 

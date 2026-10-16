@@ -2,7 +2,7 @@
 // database and the server; these check they are still there.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const schema = readFileSync('supabase/schema.sql', 'utf8');
 const build = readFileSync('supabase/functions/_shared/build-order.ts', 'utf8');
@@ -100,4 +100,25 @@ test('the site settings kept in the repo are public ones only', () => {
   assert.match(testSite, /EXPO_PUBLIC_ENV = "sit"/);
   assert.match(testSite, /EXPO_PUBLIC_SUPABASE_URL = "https:\/\/[a-z0-9]{20}\.supabase\.co"/);
   assert.match(testSite, /EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_[A-Za-z0-9_-]+"/);
+});
+
+test('the app settings kept in the repo (.env) are public ones only, and the same as the site\'s', () => {
+  // main has no .env: a plain clone of it runs on the phone's own test database.
+  // A test branch tracks one so that a plain clone builds against that
+  // environment with nothing to type (SAMIL.md). Expo writes every value in it
+  // into the app, so it may only ever hold values that are meant to be seen.
+  if (!existsSync('.env')) return;
+  const env = readFileSync('.env', 'utf8');
+  const names = [...env.matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=/gm)].map((m) => m[1]);
+  assert.ok(names.length > 0, 'no settings found in .env');
+  for (const name of names) assert.match(name, /^EXPO_PUBLIC_[A-Z0-9_]+$/, `${name} does not belong in .env`);
+  assert.doesNotMatch(env, /sb_secret_|EAAA[A-Za-z0-9_-]{10,}|sq0[a-z]{3}-|eyJ[A-Za-z0-9_-]{10,}\./);
+  // The phone build and the website of one branch talk to the same database.
+  const value = (name) => env.match(new RegExp(`^${name}=(.*)$`, 'm'))?.[1].trim();
+  const toml = readFileSync('netlify.toml', 'utf8');
+  const block = toml.split(/^\[/m).find((b) => b.includes(`EXPO_PUBLIC_ENV = "${value('EXPO_PUBLIC_ENV')}"`));
+  assert.ok(block, `netlify.toml has no site for EXPO_PUBLIC_ENV=${value('EXPO_PUBLIC_ENV')}`);
+  for (const name of ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY']) {
+    assert.equal(value(name), block.match(new RegExp(`^\\s*${name} = "([^"]*)"`, 'm'))?.[1], `${name} differs between .env (the app) and netlify.toml (the site)`);
+  }
 });

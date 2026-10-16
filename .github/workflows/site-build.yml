@@ -1,7 +1,9 @@
 # Proves the website builds before the host tries. Runs on every push to the
 # test branch and to main, with the same command the host (Netlify) runs.
-# The database address here is a stand-in: this job only checks that the build
-# works and that the pages a customer lands on after paying are in it.
+# A branch with a tracked .env (test-env) builds with it, the same public values
+# the phone build gets, and the job checks that Expo picked the file up. main has
+# no .env, so stand-in values keep its build honest: this job only checks that
+# the build works and that the pages a customer lands on after paying are in it.
 name: Site build
 
 on:
@@ -25,11 +27,19 @@ jobs:
       - run: npm ci
       - run: npm test
       - name: Build the website
-        run: npm run build:web
-        env:
-          EXPO_PUBLIC_ENV: sit
-          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: stand-in
+        run: |
+          set -o pipefail
+          if [ ! -f .env ]; then
+            export EXPO_PUBLIC_ENV=sit
+            export EXPO_PUBLIC_SUPABASE_URL=https://example.supabase.co
+            export EXPO_PUBLIC_SUPABASE_ANON_KEY=stand-in
+          fi
+          npm run build:web 2>&1 | tee build.log
+      - name: The branch's .env reached the build
+        if: hashFiles('.env') != ''
+        run: |
+          grep -F "env: load .env" build.log
+          grep -E "env: export .*EXPO_PUBLIC_SUPABASE_URL" build.log
       - name: The pages a customer comes back to are there
         run: |
           test -f dist/index.html
