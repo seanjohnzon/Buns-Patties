@@ -83,24 +83,24 @@ draft is `data/menu.seed.json` read back to him, so approved words = built app.
 
 | # | Step | Who | Opens | Done when |
 |---|---|---|---|---|
-| 1 | Your menu and logo | him | at once | name, logo, menu files → **job: draft the menu** |
+| 1 | Your menu and logo | him | at once | name, logo, menu files → **job: menu into the app, web preview up, Mark built** |
 | 2 | About your business | him | at once | hours, phone, Maps listing, story, socials, delivery apps, rewards (Maps pending at Google counts as ready) |
-| 3 | Check your menu | him | when we post the draft | every item Right → **job: build the test app** |
-| 4 | Try your app | him | when we mark it built | every screen Looks right → **approved** |
-| 5 | Payments | him | at once (costs nothing) | Square or Stripe, account email; the Connect/Allow link after approval |
-| 6 | Web address, D-U-N-S, Apple, Google | him | after approval | as before; these cost money, so only once he has approved the app |
-| 7 | Final test | him and our tester | when we mark it ready: his address live, his Square/Stripe connected, the app on his phone | 16 checks on the real thing, positive and negative (wrong code, back out of paying, closed, sold out, a second free-item claim), each Pass or Fail with a note, on both sides |
-| 8 | Launch | both | after 7 | open |
+| 3 | Try your app | him | when the preview (browser) or the app (TestFlight) is on his phone | his menu first, every item in the app against the words under it, then every screen (the owner's walk, X01–X25 for Buns & Patties): each Pass or Fail with a note, notes under each part, a box at the end he can paste into. Menu all pass → **job: native build, TestFlight**; all pass + native up → **approved** |
+| 4 | Payments | him | at once (costs nothing) | Square or Stripe, account email; the Connect/Allow link after approval |
+| 5 | Web address, D-U-N-S, Apple, Google | him | after approval | as before; these cost money, so only once he has approved the app |
+| 6 | Final test | him and our tester | when we mark it ready: his address live, his Square/Stripe connected, the app on his phone | 16 checks on the real thing, positive and negative, each Pass or Fail with a note, on both sides |
+| 7 | Launch | both | after 6 | open |
 
-**The rails.** Stages `setup → drafting → menu_check → building → app_check → approved → uat → uat_passed → live`;
+**The rails.** Stages `setup → drafting → app_check → approved → uat → uat_passed → live`;
 `advance()` in the database moves a business along from what is in. A note on an item is a job for us;
 our reply shows under the item and he checks again. By hand from the team page first (Post the draft,
 Mark built with the links, Final test ready, the tester's Pass/Fail column, Reply, Copy the email for this stage), automated one job at a time later,
 the draft first (PDF → the same JSON).
 
-**The draft (step 3), per item:** name · price · what it comes with (cannot be removed) · already
+**The menu (first part of step 3), per item:** name · price · what it comes with (cannot be removed) · already
 picked · what he chooses, with limits and extras · the shared lists once at the top (sauces, toppings,
-drinks, how every item asks). "All of these are right" per category; "Something missing?" at the bottom.
+drinks, how every item asks). He checks each one in the app, not on paper: the preview in his browser comes
+minutes after the draft, the native build only once every menu item passes.
 
 **Testing (step 4), fastest door first.** (1) The web build in his phone's browser,
 `<client>.sit.proudmerchant.com`, minutes after the build, everything but push and the icon.
